@@ -20,6 +20,7 @@ string normalExpressions = "";
 bool hasError = false;
 int openParanthesis = 0;
 int curlyBracket = 0;
+int chooseNo = 0;
 
 void printError() {
 	hasError = true;
@@ -127,6 +128,7 @@ string convertToPostfix(string str) {
 				char c = st.top();
 				st.pop();
 				newString += c;
+				newString += " ";
 			}
 			if(st.top() == '(') {
 				char c = st.top();
@@ -197,7 +199,6 @@ void calculator(string& str2, string& normalExpressions) {
 	int spaceIndex = str2.find(" ");
 	int operatorNumber = 0;
 	int varNum = 0;
-	deleteEdgeSpaces(str2);
 	while(spaceIndex != -1 && !hasError) {
 		string firstPart = str2.substr(0, spaceIndex);
 		if(firstPart == "+" || firstPart == "-" || firstPart == "*" || firstPart == "/") {
@@ -213,11 +214,6 @@ void calculator(string& str2, string& normalExpressions) {
 			} else if(firstPart == "*") {
 				writeAddition(normalExpressions, num1, num2, "mul");
 			} else if (firstPart == "/") {
-				if(spaceDeleter(num1) == "0") {
-					cout << " Syntax error, Line no: " + lineNo << endl;
-					hasError = true;
-					return;
-				}
 				writeAddition(normalExpressions, num1, num2, "udiv");
 			}
 		} else {
@@ -273,38 +269,6 @@ void assignmentHandler(string& str1, string& str2, string& normalExpressions) {
 	}
 }
 
-void expressionHandler(string line, string& normalExpressions, string& storeDefaultString, string& allocateString, int found) {
-	while(!numbers.empty()) {
-		numbers.pop();
-	}
-	string str1 = line.substr(0, found);
-	string str2 = line.substr(found+1);
-	deleteEdgeSpaces(str1);
-	deleteEdgeSpaces(str2);
-	if(!isValidVarName(str1)) {
-		hasError = true;
-		cout << "Line " << lineNo << ": syntax error" << endl;
-		return;
-	}
-	if(!isValidVarName(str2) && !is_number(str2) && !hasArithmeticOperations(str2)) {
-		hasError = true;
-		cout << "Line " << lineNo << ": syntax error" << endl;
-		return;
-	}
-	str2 = convertToPostfix(str2);
-	str1 = spaceDeleter(str1);
-	writeToAllocateString(str1, allocateString, storeDefaultString);
-	if(!hasArithmeticOperations(line)) {
-		if(!findVar(str2)) {
-			writeToAllocateString(str2, allocateString, storeDefaultString);
-		}
-		assignmentHandler(str1, str2, normalExpressions);
-	} else {
-		calculator(str2, normalExpressions);
-		writeToStoreString(str1, "%t" + to_string(tempNo-1), normalExpressions);
-	}
-}
-
 void conditionHandler(string& condition, string& normalExpressions, string type) {
 	if(condition.empty()){
 		cout << "Line " << lineNo << ": " << "syntax error" << endl;
@@ -313,6 +277,10 @@ void conditionHandler(string& condition, string& normalExpressions, string type)
 	string equality = "ne";
 	if(type == "choose") {
 		equality = "eq";
+	} else if(type == "chooseGreater") {
+		equality = "sgt";
+	} else if (type == "chooseLess") {
+		equality = "slt";
 	}
 	while(!numbers.empty()) {
 		numbers.pop();
@@ -388,11 +356,99 @@ void chooseHandler(string line, string& normalExpressions){
 
 	var1= "(" + var1 + ") {";
 	ifHandler(var1, normalExpressions, "choose");
-	normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + "2" + " )";
+	if(hasArithmeticOperations(var2)) {
+		var2 = convertToPostfix(var2);
+		calculator(var2, normalExpressions);
+		writeToStoreString("c"+to_string(chooseNo), "%t" + to_string(tempNo-1), normalExpressions);
+	} else {
+		writeToStoreString("c"+to_string(chooseNo), var2, normalExpressions);
+	}
 
 	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(ifNo);
 	normalExpressions = normalExpressions + "\n\nifend" + to_string(ifNo) + ":\n";
 	ifNo++;
+
+	ifHandler(var1, normalExpressions, "chooseGreater");
+	if(hasArithmeticOperations(var3)) {
+		var3 = convertToPostfix(var3);
+		calculator(var3, normalExpressions);
+		writeToStoreString("c"+to_string(chooseNo), "%t" + to_string(tempNo-1), normalExpressions);
+	} else {
+		writeToStoreString("c"+to_string(chooseNo), var3, normalExpressions);
+	}
+
+	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(ifNo);
+	normalExpressions = normalExpressions + "\n\nifend" + to_string(ifNo) + ":\n";
+	ifNo++;
+
+	ifHandler(var1, normalExpressions, "chooseLess");
+	if(hasArithmeticOperations(var4)) {
+		var4 = convertToPostfix(var4);
+		calculator(var4, normalExpressions);
+		writeToStoreString("c"+to_string(chooseNo), "%t" + to_string(tempNo-1), normalExpressions);
+	} else {
+		writeToStoreString("c"+to_string(chooseNo), var4, normalExpressions);
+	}
+
+	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(ifNo);
+	normalExpressions = normalExpressions + "\n\nifend" + to_string(ifNo) + ":\n";
+	ifNo++;
+}
+
+void expressionHandler(string line, string& normalExpressions, string& storeDefaultString, string& allocateString, int found) {
+	while(!numbers.empty()) {
+		numbers.pop();
+	}
+	string str1 = line.substr(0, found);
+	string str2 = line.substr(found+1);
+	deleteEdgeSpaces(str1);
+	deleteEdgeSpaces(str2);
+	if(!isValidVarName(str1)) {
+		hasError = true;
+		cout << "Line " << lineNo << ": syntax error" << endl;
+		return;
+	}
+	int chooseIndex = str2.find("choose");
+	if(!isValidVarName(str2) && !is_number(str2) && !hasArithmeticOperations(str2) && chooseIndex == -1) {
+		hasError = true;
+		cout << "Line " << lineNo << ": syntax error" << endl;
+		return;
+	}
+	if(chooseIndex != -1) {
+		string tempChoose = str2.substr(chooseIndex);
+		int openIndex = 0;
+		int closeIndex = tempChoose.length()-1;
+		int openParanthesisNum = 0;
+		for(int t=0; t<tempChoose.length()-1; t++) {
+			if(tempChoose[t] == '(') {
+				if(openIndex == 0) {
+					openIndex = t;
+				}
+				openParanthesisNum++;
+			}
+			if(tempChoose[t] == ')') {
+				if(openParanthesisNum == 1) {
+					closeIndex = t;
+				}
+				openParanthesisNum--;
+			}
+		}
+		tempChoose = tempChoose.substr(openIndex, closeIndex-openIndex+1);
+		chooseHandler(tempChoose, normalExpressions);
+		str2 = str2.substr(0, chooseIndex) + "c"+to_string(chooseNo++) + str2.substr(closeIndex+chooseIndex+1);
+	}
+	str2 = convertToPostfix(str2);
+	str1 = spaceDeleter(str1);
+	writeToAllocateString(str1, allocateString, storeDefaultString);
+	if(!hasArithmeticOperations(line)) {
+		if(!findVar(str2) && str2[0] != '%') {
+			writeToAllocateString(str2, allocateString, storeDefaultString);
+		}
+		assignmentHandler(str1, str2, normalExpressions);
+	} else {
+		calculator(str2, normalExpressions);
+		writeToStoreString(str1, "%t" + to_string(tempNo-1), normalExpressions);
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -418,8 +474,8 @@ int main(int argc, char* argv[]) {
 	for(int k=0; k<tokens.size() && !hasError; k++) {
 		lineNo++;
 		string line = tokens[k];
-		// string::iterator end_pos = remove(line.begin(), line.end(), ' ');
-		// line.erase(end_pos, line.end());
+		string::iterator end_pos = remove(line.begin(), line.end(), ' ');
+		line.erase(end_pos, line.end());
 		int found = line.find("=");
 		int thirdFound = line.find("}");
 		if(found != -1) {
@@ -466,9 +522,9 @@ int main(int argc, char* argv[]) {
 				curlyBracket++;
 				inIfBody = true;
 				ifHandler(line,normalExpressions, "if");
-			}else if (line.find("choose") != string::npos) {
+			} else if (line.find("choose") != string::npos) {
 				chooseHandler(line, normalExpressions); 
-			}else {
+			} else {
 				cout << "Not found" << endl;
 			}
 		}
@@ -486,14 +542,4 @@ int main(int argc, char* argv[]) {
 	infile.close();
 	outfile.close();
     return 0;
-
-    	// if(exp1 == 0) {
-    	// 	return exp2;
-    	// }
-    	// if(exp1 > 0) {
-    	// 	return exp3;
-    	// }
-    	// if(exp1 < 0) {
-    	// 	return exp4;
-    	// }
 }
