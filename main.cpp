@@ -94,16 +94,22 @@ bool isValidVarName(const string str) {
 }
 
 void deleteEdgeSpaces(string& str) {
-	int firstChar = 0;
-	int secondChar = str.length()-1;
+	int firstCharIndex = 0;
+	int lastCharIndex = str.length()-1;
 	for(int i=0; i<str.length(); i++) {
-		if(str[i] != ' ' && firstChar == -1 && secondChar == -1) {
-			firstChar = i;
-		} else if(str[i] != ' ' && firstChar != -1) {
-			secondChar = i;
+		if(str[i] != ' ' && firstCharIndex == 0) {
+			firstCharIndex = i;
+			break;
 		}
 	}
-	str = str.substr(firstChar, secondChar-firstChar+1);
+	for(int j=str.length()-1; j>=0; j--) {
+		if(str[j] != ' ' && lastCharIndex == str.length()-1) {
+			lastCharIndex = j;
+			break;
+		}
+	}
+	
+	str = str.substr(firstCharIndex, lastCharIndex - firstCharIndex+1);
 }
 
 string convertToPostfix(string str) {
@@ -246,6 +252,7 @@ void printHandler(string line, string& normalExpressions) {
 	int firstIndex = line.find("(");
 	int secondIndex = line.find_last_of(")");
 	string tempPrint = line.substr(firstIndex + 1, secondIndex-firstIndex-1);
+	deleteEdgeSpaces(tempPrint);
 	if(!is_number(tempPrint)) {
 		if(hasArithmeticOperations(tempPrint)) {
 			tempPrint = convertToPostfix(tempPrint);
@@ -420,6 +427,7 @@ int main(int argc, char* argv[]) {
 		string line = tokens[k];
 		// string::iterator end_pos = remove(line.begin(), line.end(), ' ');
 		// line.erase(end_pos, line.end());
+		deleteEdgeSpaces(line);
 		int found = line.find("=");
 		int thirdFound = line.find("}");
 		if(found != -1) {
