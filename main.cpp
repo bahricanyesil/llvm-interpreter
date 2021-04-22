@@ -7,6 +7,8 @@
 
 using namespace std;
 
+bool expressionCheck(string& str);
+
 vector<string> tokens;
 vector<string> variables;
 stack<string> numbers;
@@ -80,6 +82,29 @@ bool variableCheck(string str) {
 	return true;
 }
 
+
+bool findVar(const string str) {
+	return find(variables.begin(), variables.end(), str) != variables.end();
+}
+
+bool writeToAllocateString(string str) {
+	if(!findVar(str) && variableCheck(str)) {
+		allocateString += "\n\t%" + str + " = alloca i32";
+		storeDefaultString += "\n\tstore i32 0, i32* %" + str;
+		variables.push_back(str);
+		return true;
+	}
+	return false;
+}
+
+void writeToStoreString(string str1, string str2) {
+	normalExpressions += "\n\tstore i32 " + str2 + ", i32* %" + str1;
+}
+
+void loadToTemp(string var) {
+	normalExpressions = normalExpressions + "\n\t%t" + to_string(tempNo++) + " = load i32* %" + var;
+}
+
 bool chooseCheck(string str) {
     if(str.length() < 6) {
         return false;
@@ -118,8 +143,10 @@ bool chooseCheck(string str) {
                     string forth = tempVar.substr(commaIndex+1);
                     tempVar = forth;
                     int closeParanthesisIndex = forth.find_last_of(")");
-                    if(closeParanthesisIndex != -1) {
-                        forth = forth.substr(0, closeParanthesisIndex);
+                    if(closeParanthesisIndex == -1) {
+                        return false;
+                    } else {
+                    	forth = forth.substr(0, closeParanthesisIndex);
                         if(expressionCheck(forth)) {
                             if(closeParanthesisIndex == tempVar.length()-1) {
                                 return true;
@@ -133,7 +160,7 @@ bool chooseCheck(string str) {
     return false;
 }
 
-bool factorCheck(string str) {
+bool factorCheck(string& str) {
 	if(chooseCheck(str)) {
 		return true;
 	} else {		
@@ -159,15 +186,40 @@ bool factorCheck(string str) {
 	}
 }
 
-bool expressionCheck(string str) {
-	deleteEdgeSpaces(str);
+bool expressionCheck(string& str) {
 	if(factorCheck(str)) {
 		return true;
 	} else if(hasArithmeticOperations(str)) {
-		str = convertToPostfix(str);
+		//TODO:
 		return true;
 	} else {
 		return false;
+	}
+}
+
+void assignmentHandler(string firstPart, string secondPart) {
+	writeToAllocateString(firstPart);
+	writeToAllocateString(secondPart);
+	if(variableCheck(secondPart)) {
+		loadToTemp(secondPart);
+		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
+	} else if(is_number(secondPart)) {
+		writeToStoreString(firstPart, secondPart);
+	} else if(false) {
+		
+	}
+}
+
+void assignmentHelper(string line) {
+	int equalIndex = line.find("=");
+	string firstPart = line.substr(0, equalIndex);
+	string secondPart = line.substr(equalIndex+1);
+	deleteEdgeSpaces(firstPart);
+	deleteEdgeSpaces(secondPart);
+	if(!variableCheck(firstPart) || !expressionCheck(secondPart)) {
+		printError();
+	} else {
+		assignmentHandler(firstPart, secondPart);
 	}
 }
 
@@ -192,8 +244,13 @@ int main(int argc, char* argv[]) {
 	for(int k=0; k<tokens.size() && !hasError; k++) {
 		lineNo++;
 		string line = tokens[k];
-		
-		
+		deleteEdgeSpaces(line);
+		int equalIndex = line.find("=");
+		if(equalIndex != -1) {
+			assignmentHelper(line);
+		} else {
+			cout << "BAŞKA" << endl;
+		}
 	}
 
 	outfile << allocateString;
