@@ -4,14 +4,7 @@ declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 
-	%a = alloca i32
-	%choose = alloca i32
 
-	store i32 0, i32* %a
-	store i32 0, i32* %choose
 
-	%t1 = load i32* %choose
-	store i32 %t1, i32* %a
-	store i32 1, i32* %a
 	ret i32 0
 }
