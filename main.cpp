@@ -218,11 +218,26 @@ void assignmentHelper(string line) {
 	string secondPart = line.substr(equalIndex+1);
 	deleteEdgeSpaces(firstPart);
 	deleteEdgeSpaces(secondPart);
-	if(!variableCheck(firstPart) || !expressionCheck(secondPart)) {
-		printError();
-	} else {
-		assignmentHandler(firstPart, secondPart);
-	}
+	assignmentHandler(firstPart, secondPart);
+	
+} 
+
+bool assignmentCheck(string& str){
+
+	//deleteEdgeSpaces(str);
+	int equalIndex=str.find("=");
+	if(equalIndex==-1)
+		return false;
+	
+	str firstPart=str.substring(0,equalIndex);
+	str secondPart=str.substring(equalIndex+1);
+	//deleteEdgeSpaces(firstPart);
+	//deleteEdgeSpaces(secondPart);
+	
+	if(!variableCheck(firstPart) || !expressionCheck(secondPart))
+		return false;
+	
+	return true;
 }
 
 bool ifCheck(string& str){
@@ -402,23 +417,23 @@ int main(int argc, char* argv[]) {
 	for(int k=0; k<tokens.size() && !hasError; k++) {
 		lineNo++;
 		string line = tokens[k];
+		
+		if(line="")
+			continue;
+		
 		deleteEdgeSpaces(line);
-		int equalIndex = line.find("=");
-		if(equalIndex != -1) {
+		if(assignmentCheck(line)) {
 			assignmentHelper(line);
+			
 		} else if(ifCheck(line)){
-
 			ifHandler(line);
+			
 		} else if(whileCheck(line)){
-
 			whileHandler(line);
+		
 		} else if(printCheck(line)){
-
 			printHandler(line);
-		}
-
-		else{
-
+		} else{
 			printError();
 		}
 	}
