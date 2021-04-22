@@ -240,6 +240,12 @@ bool ifCheck(string& str){
 
 	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
 		return false;
+	
+	for(int i=2;i<openParanthesisIndex;i++){
+	
+		if(str[i]!=' ')
+			return false;
+	}
 
 	string condition=str.substr(openParanthesisIndex+1,lastCloseParanthes);
 	
@@ -278,6 +284,12 @@ bool whileCheck(string& str){
 
 	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
 		return false;
+	
+	for(int i=5;i<openParanthesisIndex;i++){
+	
+		if(str[i]!=' ')
+			return false;
+	}
 
 	string condition=str.substr(openParanthesisIndex+1,lastCloseParanthes);
 	
@@ -310,12 +322,19 @@ bool printCheck(string& str){
 
 	if(str.substr(0,5)!="print")
 		return false;
+	
 
 	int openParanthesisIndex=str.find("(");
 	int lastCloseParanthes=str.find_last_of(")");
 
 	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
 		return false;
+	
+	for(int i=5;i<openParanthesisIndex;i++){
+	
+		if(str[i]!=' ')
+			return false;
+	}
 
 	string inside=str.substr(openParanthesisIndex+1,lastCloseParanthes);
 
