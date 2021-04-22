@@ -7,6 +7,10 @@
 
 using namespace std;
 
+bool expressionCheck(string& str);
+bool ifCheck(string& str);
+bool whileCheck(string% str);
+
 vector<string> tokens;
 vector<string> variables;
 stack<string> numbers;
@@ -26,14 +30,32 @@ void printError() {
 	cout << "Line " << lineNo << ": syntax error" << endl;
 }
 
-string spaceDeleter(string str) {
-	string::iterator end_pos = remove(str.begin(), str.end(), ' ');
-	str.erase(end_pos, str.end());
-	string::iterator end_pos2 = remove(str.begin(), str.end(), '	');
-	str.erase(end_pos2, str.end());
-	return str;
+void deleteEdgeSpaces(string& str) {
+	int firstCharIndex = 0;
+	int lastCharIndex = str.length()-1;
+	for(int i=0; i<str.length(); i++) {
+		if(str[i] != ' ' && firstCharIndex == 0) {
+			firstCharIndex = i;
+			break;
+		}
+	}
+	for(int j=str.length()-1; j>=0; j--) {
+		if(str[j] != ' ' && lastCharIndex == str.length()-1) {
+			lastCharIndex = j;
+			break;
+		}
+	}
+	
+	str = str.substr(firstCharIndex, lastCharIndex - firstCharIndex+1);
 }
 
+bool isOperator(const string str) {
+	return (str == "*" || str == "/" || str == "+" || str == "-");
+}
+
+bool isValidChar(char c) {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+}
 
 bool is_number(const string& s) {
     string::const_iterator it = s.begin();
@@ -41,51 +63,20 @@ bool is_number(const string& s) {
     return !s.empty() && it == s.end();
 }
 
-bool shouldAllocate(const string& s) {
-	bool isNumber = false;
-	string::const_iterator it = s.begin();
-    while (it != s.end() && isdigit(*it)) ++it;
-    isNumber = !s.empty() && it == s.end();
-    if(isNumber) {
-    	return false;
-    } else if(spaceDeleter(s) == "(" || spaceDeleter(s) == ")") {
-    	return false;
-    } else {
-    	return true;
-    }
-}
-
 bool hasArithmeticOperations(string &line) {
 	return !(line.find("+") == string::npos && line.find("-") == string::npos && line.find("*") == string::npos && line.find("/") == string::npos);
 }
 
-bool findVar(const string& str) {
-	return find(variables.begin(), variables.end(), str) != variables.end();
-}
-
-int precedence(char c) {
-	if(c == '*' || c == '/') {
-		return 2;
-	} else if(c == '+' || c == '-') {
-		return 1;
-	} else {
-		return -1;
-	}
-}
-
-int isValidChar(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
-}
-
-bool isChar(char c) {
+bool letterCheck(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool isValidVarName(const string str) {
-	if(str.find(" ") != string::npos || !isChar(str[0])) {
+bool variableCheck(string str) {
+	deleteEdgeSpaces(str);
+	if(!letterCheck(str[0])) {
 		return false;
 	}
-	for(int i=0; i<str.length(); i++) {
+	for(int i=1; i<str.length(); i++) {
 		if(!isValidChar(str[i])) {
 			return false;
 		}
@@ -93,307 +84,272 @@ bool isValidVarName(const string str) {
 	return true;
 }
 
-void deleteEdgeSpaces(string& str) {
-	int firstChar = 0;
-	int secondChar = str.length()-1;
-	for(int i=0; i<str.length(); i++) {
-		if(str[i] != ' ' && firstChar == -1 && secondChar == -1) {
-			firstChar = i;
-		} else if(str[i] != ' ' && firstChar != -1) {
-			secondChar = i;
-		}
-	}
-	str = str.substr(firstChar, secondChar-firstChar+1);
+
+bool findVar(const string str) {
+	return find(variables.begin(), variables.end(), str) != variables.end();
 }
 
-string convertToPostfix(string str) {
-	stack<char> st;
-	st.push('N');
-	int length = str.length();
-	string newString;
-
-	for(int i=0; i<length; i++) {
-		if(isValidChar(str[i])) {
-			newString += str[i];
-			if(i+1 < str.length()) {
-				if(!isValidChar(str[i+1])) {
-					newString += " ";
-				}
-			}
-		} else if(str[i] == '(') {
-			st.push('(');
-		} else if(str[i] == ')') {
-			while(st.top() != 'N' && st.top() != '(') {
-				char c = st.top();
-				st.pop();
-				newString += c;
-			}
-			if(st.top() == '(') {
-				char c = st.top();
-				st.pop();
-			}
-		} else {
-			while(st.top() != 'N' && precedence(str[i]) <= precedence(st.top())) {
-				char c = st.top();
-				st.pop();
-				if(newString.substr(newString.length()-1) != " ") {
-					newString += " ";
-				}
-				newString = newString + c + " ";
-			}
-			st.push(str[i]);
-		}
-	}
-
-	while(st.top() != 'N') {
-		char c = st.top();
-		st.pop();
-		if(newString.substr(newString.length()-1) != " ") {
-			newString += " ";
-		}
-		newString = newString + c + " ";
-	}
-
-	return newString;
-}
-
-void writeToAllocateString(string& str, string& allocateStr, string& storeDefaultString) {
-	if(!findVar(str) && shouldAllocate(str)) {
-		allocateStr += "\n\t%" + str + " = alloca i32";
+bool writeToAllocateString(string str) {
+	if(!findVar(str) && variableCheck(str)) {
+		allocateString += "\n\t%" + str + " = alloca i32";
 		storeDefaultString += "\n\tstore i32 0, i32* %" + str;
 		variables.push_back(str);
+		return true;
 	}
+	return false;
 }
 
-void writeToStoreString(string str1, string str2, string& normalExpressions) {
+void writeToStoreString(string str1, string str2) {
 	normalExpressions += "\n\tstore i32 " + str2 + ", i32* %" + str1;
 }
 
-void writeAddition(string& normalExpressions, string& num1, string& num2, string evalOperator) {
-	string firstTemp = num1;
-	string secondTemp = num2;
-	if(!is_number(num1)) {
-		if(num1.find("%t") == string::npos) {
-			firstTemp = "%t" + to_string(tempNo++);
-			normalExpressions = normalExpressions + "\n\t" + firstTemp + " = load i32* %" + num1;
-		} else {
-			firstTemp = num1;
-		}
-	}
-	if(!is_number(num2)) {
-		if(num2.find("%t") == string::npos) {
-			secondTemp = "%t" + to_string(tempNo++);
-			normalExpressions = normalExpressions + "\n\t" + secondTemp + " = load i32* %" + num2;
-		} else {
-			secondTemp = num2;
-		}
-	}
-	string newTemp = "%t" + to_string(tempNo++);
-	normalExpressions = normalExpressions + "\n\t" + newTemp + " = " + evalOperator + " i32 " + secondTemp + ", " + firstTemp;
-	numbers.push(newTemp);
+void loadToTemp(string var) {
+	normalExpressions = normalExpressions + "\n\t%t" + to_string(tempNo++) + " = load i32* %" + var;
 }
 
-void calculator(string& str2, string& normalExpressions) {
-	int spaceIndex = str2.find(" ");
-	int operatorNumber = 0;
-	int varNum = 0;
-	deleteEdgeSpaces(str2);
-	while(spaceIndex != -1 && !hasError) {
-		string firstPart = str2.substr(0, spaceIndex);
-		if(firstPart == "+" || firstPart == "-" || firstPart == "*" || firstPart == "/") {
-			operatorNumber++;
-			string num1 = numbers.top();
-			numbers.pop();
-			string num2 = numbers.top();
-			numbers.pop();
-			if(firstPart == "+") {
-				writeAddition(normalExpressions, num1, num2, "add");
-			} else if(firstPart == "-") {
-				writeAddition(normalExpressions, num1, num2, "sub");
-			} else if(firstPart == "*") {
-				writeAddition(normalExpressions, num1, num2, "mul");
-			} else if (firstPart == "/") {
-				if(spaceDeleter(num1) == "0") {
-					cout << " Syntax error, Line no: " + lineNo << endl;
-					hasError = true;
-					return;
+bool chooseCheck(string str) {
+    if(str.length() < 6) {
+        return false;
+    } else if(str.substr(0, 6) == "choose") {
+        string tempVar = str.substr(6);
+        int openParanthesisIndex = tempVar.find("(");
+        if(openParanthesisIndex == -1) {
+            return false;
+        } else {
+            for(int i=0; i<openParanthesisIndex; i++) {
+                if(tempVar[i] != ' ') {
+                    return false;
+                }
+            }
+        }
+        int commaIndex = tempVar.find(",");
+        if(commaIndex == -1) {
+            return false;
+        }
+        string first = tempVar.substr(openParanthesisIndex+1, commaIndex - openParanthesisIndex - 1);
+        if(expressionCheck(first)) {
+            tempVar = tempVar.substr(commaIndex+1);
+            commaIndex = tempVar.find(",");
+            if(commaIndex == -1) {
+                return false;
+            }
+            string second = tempVar.substr(0, commaIndex);
+            if(expressionCheck(second)) {
+                tempVar = tempVar.substr(commaIndex+1);
+                commaIndex = tempVar.find(",");
+                if(commaIndex == -1) {
+                    return false;
+                }
+                string third = tempVar.substr(0, commaIndex);
+                if(expressionCheck(third)) {
+                    string forth = tempVar.substr(commaIndex+1);
+                    tempVar = forth;
+                    int closeParanthesisIndex = forth.find_last_of(")");
+                    if(closeParanthesisIndex == -1) {
+                        return false;
+                    } else {
+                    	forth = forth.substr(0, closeParanthesisIndex);
+                        if(expressionCheck(forth)) {
+                            if(closeParanthesisIndex == tempVar.length()-1) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } 
+        } 
+    }
+    return false;
+}
+
+bool factorCheck(string& str) {
+	if(chooseCheck(str)) {
+		return true;
+	} else {		
+		string tempVar = str;
+		for(int i=0; i<tempVar.length(); i++) {
+			if(tempVar[i] == '(') {
+				if(str[tempVar.length()-1] != ')') {
+					return false;
+				} else {
+					str = str.substr(1, str.length()-2);
 				}
-				writeAddition(normalExpressions, num1, num2, "udiv");
+			} else {
+				break;
 			}
+		}
+		if(variableCheck(str)) {
+			return true;
+		} else if(is_number(str)) {
+			return true;
 		} else {
-			if(!isValidVarName(firstPart) && !is_number(firstPart)) {
-				printError();
-			}
-			varNum++;
-			writeToAllocateString(firstPart,allocateString,storeDefaultString);
-			numbers.push(firstPart);
+			return false;
 		}
-		if(spaceIndex == str2.length()-1) {
-			break;
-		}
-		str2 = str2.substr(spaceIndex+1);
-		spaceIndex = str2.find(" ");
 	}
-	if(str2 == "+" || str2 == "-" || str2 == "*" || str2 == "/") {
-		operatorNumber++;
+}
+
+bool expressionCheck(string& str) {
+	if(factorCheck(str)) {
+		return true;
+	} else if(hasArithmeticOperations(str)) {
+		//TODO:
+		return true;
+	} else {
+		return false;
 	}
-	if(varNum -1 != operatorNumber) {
+}
+
+void assignmentHandler(string firstPart, string secondPart) {
+	writeToAllocateString(firstPart);
+	writeToAllocateString(secondPart);
+	if(variableCheck(secondPart)) {
+		loadToTemp(secondPart);
+		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
+	} else if(is_number(secondPart)) {
+		writeToStoreString(firstPart, secondPart);
+	} else if(false) {
+		
+	}
+}
+
+void assignmentHelper(string line) {
+	int equalIndex = line.find("=");
+	string firstPart = line.substr(0, equalIndex);
+	string secondPart = line.substr(equalIndex+1);
+	deleteEdgeSpaces(firstPart);
+	deleteEdgeSpaces(secondPart);
+	if(!variableCheck(firstPart) || !expressionCheck(secondPart)) {
 		printError();
-	}
-}
-
-void printHandler(string line, string& normalExpressions) {
-	int firstIndex = line.find("(");
-	int secondIndex = line.find_last_of(")");
-	string tempPrint = line.substr(firstIndex + 1, secondIndex-firstIndex-1);
-	if(!is_number(tempPrint)) {
-		if(hasArithmeticOperations(tempPrint)) {
-			tempPrint = convertToPostfix(tempPrint);
-			calculator(tempPrint, normalExpressions);
-			tempPrint = "%t" + to_string(tempNo-1);
-		} else {
-			if(!findVar(tempPrint)) {
-				writeToAllocateString(tempPrint, allocateString, storeDefaultString);
-			}
-			string tempVar = "%t" + to_string(tempNo++);
-			normalExpressions = normalExpressions + "\n\t" + tempVar + " = load i32* %" + tempPrint;
-			tempPrint = tempVar;
-		}
-	}
-	normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + tempPrint + " )";
-}
-
-void assignmentHandler(string& str1, string& str2, string& normalExpressions) {
-	if(!is_number(str2)) {
-		string newTempT = "%t" + to_string(tempNo++);
-		normalExpressions = normalExpressions + "\n\t" + newTempT + " = load i32* %" + str2;
-		writeToStoreString(str1, newTempT, normalExpressions);
 	} else {
-		writeToStoreString(str1, str2, normalExpressions);
+		assignmentHandler(firstPart, secondPart);
 	}
 }
 
-void expressionHandler(string line, string& normalExpressions, string& storeDefaultString, string& allocateString, int found) {
-	while(!numbers.empty()) {
-		numbers.pop();
-	}
-	string str1 = line.substr(0, found);
-	string str2 = line.substr(found+1);
-	deleteEdgeSpaces(str1);
-	deleteEdgeSpaces(str2);
-	if(!isValidVarName(str1)) {
-		hasError = true;
-		cout << "Line " << lineNo << ": syntax error" << endl;
-		return;
-	}
-	if(!isValidVarName(str2) && !is_number(str2) && !hasArithmeticOperations(str2)) {
-		hasError = true;
-		cout << "Line " << lineNo << ": syntax error" << endl;
-		return;
-	}
-	str2 = convertToPostfix(str2);
-	str1 = spaceDeleter(str1);
-	writeToAllocateString(str1, allocateString, storeDefaultString);
-	if(!hasArithmeticOperations(line)) {
-		if(!findVar(str2)) {
-			writeToAllocateString(str2, allocateString, storeDefaultString);
-		}
-		assignmentHandler(str1, str2, normalExpressions);
-	} else {
-		calculator(str2, normalExpressions);
-		writeToStoreString(str1, "%t" + to_string(tempNo-1), normalExpressions);
-	}
-}
+bool ifCheck(string& str){
 
-void conditionHandler(string& condition, string& normalExpressions, string type) {
-	if(condition.empty()){
-		cout << "Line " << lineNo << ": " << "syntax error" << endl;
-		return;
-	}
-	string equality = "ne";
-	if(type == "choose") {
-		equality = "eq";
-	}
-	while(!numbers.empty()) {
-		numbers.pop();
-	}
-	if(!hasArithmeticOperations(condition)){
-		if(!findVar(condition)) {
-			writeToAllocateString(condition, allocateString, storeDefaultString);
-		}
-		if(is_number(condition)) {
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 "+condition+", 0";
-		} else {
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %"+condition;
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
-		}	
-	}
-	else{
-		condition = convertToPostfix(condition);
-		calculator(condition,normalExpressions);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
-	}
-}
+	//deleteEdgeSpaces(str);
+	if(str.substr(0,2)!="if")
+		return false;
 
-void whileHandler(string line, string& normalExpressions) {
-	normalExpressions = normalExpressions + "\n\tbr label %whcond" + to_string(whileNo) + "\n\nwhcond" + to_string(whileNo) + ":";
-	int firstIndex = line.find("(");
-	int secondIndex = line.find_last_of(")");
-	int bracketIndex = line.find("{");
+	int openParanthesisIndex=str.find("(");
+	int lastCloseParanthes=str.find_last_of(")");
 
-	if(firstIndex==string::npos || secondIndex==string::npos || bracketIndex==string::npos){
-		cout << "Line " << lineNo << ": " << "syntax error" << endl;
-		return ;
-	}
+	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
+		return false;
 
-	string condition = line.substr(firstIndex+1, secondIndex-firstIndex-1);
+	string condition=str.substr(openParanthesisIndex+1,lastCloseParanthes);
 	
-	conditionHandler(condition,normalExpressions, "while");
-	normalExpressions=normalExpressions+"\n\tbr i1 %t" + to_string(tempNo) +", label %whbody" + to_string(whileNo) + ", label %whend" + to_string(whileNo);
-	normalExpressions=normalExpressions+"\n\nwhbody" + to_string(whileNo) + ":";
-	tempNo++;
-}
+	if(!expressionCheck(condition))
+		return false;
 
-void ifHandler(string line, string& normalExpressions, string type){
-	normalExpressions = normalExpressions + "\n\tbr label %ifcond" + to_string(ifNo) + "\n\nifcond" + to_string(ifNo) + ":";
-	int firstIndex = line.find("(");
-	int secondIndex = line.find_last_of(")");
-	int bracketIndex = line.find("{");
-
-	if(firstIndex==string::npos || secondIndex==string::npos || bracketIndex==string::npos){
-		cout << "Line " << lineNo << ": " << "syntax error" << endl;
-		return ;
-	}
+	int curlyBracketIndex=str.find("{");
 	
-	string condition = line.substr(firstIndex+1, secondIndex-firstIndex-1);
+	if(curlyBracketIndex==-1)
+		return false;
 
-	conditionHandler(condition,normalExpressions, type);
-	normalExpressions=normalExpressions+"\n\tbr i1 %t" + to_string(tempNo) +", label %ifbody" + to_string(ifNo) + ", label %ifend" + to_string(ifNo);
-	normalExpressions=normalExpressions+"\n\nifbody" + to_string(ifNo) + ":";
-	tempNo++;
+	for(int i=lastCloseParanthes+1;i<curlyBracketIndex;i++){
+
+		if(str[i]!=' ')
+			return false;
+	}
+
+	if(curlyBracketIndex!=str.length()-1)
+		return false;
+
+	return true;
 }
 
-void chooseHandler(string line, string& normalExpressions){
-	int firstIndex = line.find("(");
-	int secondIndex = line.find_last_of(")");
-	string variableLine = line.substr(firstIndex+1, secondIndex-firstIndex-1);
-	spaceDeleter(variableLine);
-	string var1 = variableLine.substr(0,variableLine.find(","));
-	variableLine = variableLine.substr(variableLine.find(",")+1);
-	string var2 = variableLine.substr(0,variableLine.find(","));
-	variableLine = variableLine.substr(variableLine.find(",")+1);
-	string var3 = variableLine.substr(0,variableLine.find(","));
-	variableLine = variableLine.substr(variableLine.find(",")+1);
-	string var4 = variableLine;
+bool whileCheck(string& str){
 
-	var1= "(" + var1 + ") {";
-	ifHandler(var1, normalExpressions, "choose");
-	normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + "2" + " )";
+	//deleteEdgeSpaces(str);
+	if(str.substr(0,5)!="while")
+		return false;
 
-	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(ifNo);
-	normalExpressions = normalExpressions + "\n\nifend" + to_string(ifNo) + ":\n";
+	int openParanthesisIndex=str.find("(");
+	int lastCloseParanthes=str.find_last_of(")");
+
+	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
+		return false;
+
+	string condition=str.substr(openParanthesisIndex+1,lastCloseParanthes);
+	
+	if(!expressionCheck(condition))
+		return false;
+
+	int curlyBracketIndex=str.find("{");
+	
+	if(curlyBracketIndex==-1)
+		return false;
+
+	for(int i=lastCloseParanthes+1;i<curlyBracketIndex;i++){
+
+		if(str[i]!=' ')
+			return false;
+	}
+
+	if(curlyBracketIndex!=str.length()-1)
+		return false;
+
+	return true;
+
+}
+
+bool printCheck(string& str){
+
+	//deleteEdgeSaces(str);
+
+	if(str.substr(0,5)!="print")
+		return false;
+
+	int openParanthesisIndex=str.find("(");
+	int lastCloseParanthes=str.find_last_of(")");
+
+	if(openParanthesisIndex==-1 || lastCloseParanthes==-1)
+		return false;
+
+	string inside=str.substr(openParanthesisIndex+1,lastCloseParanthes);
+
+	if(!expressionCheck(inside))
+		return false;
+
+	if(lastCloseParanthes!=str.length()-1)
+		return false;
+
+	return true;
+
+}
+
+void conditionHandler(string& condition){
+
+	//expressionHandler(condition);
+}
+
+void ifHandler(string& line){
+
+	string condition=line.substr(line.find("(")+1,line.find_last_of(")"));
+	normalExpressions+="\nbr label \%ifcond"+ifNo;
+	normalExpressions+="\n\nif"+ifNo+"cond:"
+	conditionHandler(condition);
 	ifNo++;
 }
+
+void whileHandler(string& line){
+
+	string condition=line.substr(line.find("(")+1,line.find_last_of(")"));
+	normalExpressions+="\nbr label %whcond"+ifNo;
+	normalExpressions+="\n\nwh"+ifNo+"cond:"
+	conditionHandler(condition);	
+	whileNo++;
+}
+
+void printHandler(string& line){
+
+	string inside=line.substr(line.find("(")+1,line.find_last_of(")"));
+	//expressionHandler(inside);
+
+	normalExpressions+="\ncall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t"+tempNo-1+" )";
+}
+
 
 int main(int argc, char* argv[]) {
 	ifstream infile;
@@ -413,69 +369,28 @@ int main(int argc, char* argv[]) {
 		tokens.push_back(token);	
 	}
 
-	bool inWhileBody = false;
-	bool inIfBody = false;
 	for(int k=0; k<tokens.size() && !hasError; k++) {
 		lineNo++;
 		string line = tokens[k];
-		// string::iterator end_pos = remove(line.begin(), line.end(), ' ');
-		// line.erase(end_pos, line.end());
-		int found = line.find("=");
-		int thirdFound = line.find("}");
-		if(found != -1) {
-			expressionHandler(line, normalExpressions, storeDefaultString, allocateString, found);
-		} else if(thirdFound != -1) {
-			if(inWhileBody) {
-				inWhileBody = false;
-				normalExpressions = normalExpressions + "\n\tbr label %whcond" + to_string(whileNo);
-				normalExpressions = normalExpressions + "\n\nwhend" + to_string(whileNo) + ":\n";
-				whileNo++;
-				curlyBracket--;
-			} else if(inIfBody) {
-				inIfBody = false;
-				normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(ifNo);
-				normalExpressions = normalExpressions + "\n\nifend" + to_string(ifNo) + ":\n";
-				ifNo++;
-				curlyBracket--;
-			}
-		} else {
-			if(line.find("print") != string::npos) {
-				printHandler(line, normalExpressions);
-			} else if (line.find("while") != string::npos) {
-				string tempLine = spaceDeleter(line);
-				if(inWhileBody || inIfBody || tempLine.substr(0, 6) != "while(") {
-					hasError = true;
-					cout << "Line " << lineNo << ": syntax error" << endl;
-					break;
-				}
-				if(inWhileBody || inIfBody) {
-					hasError = true;
-					cout << "Line " << lineNo << ": syntax error" << endl;
-					break;
-				}
-				curlyBracket++;
-				inWhileBody = true;
-				whileHandler(line, normalExpressions);
-			} else if (line.find("if") != string::npos) {
-				string tempLine = spaceDeleter(line);
-				if(inWhileBody || inIfBody || tempLine.substr(0, 3) != "if(") {
-					hasError = true;
-					cout << "Line " << lineNo << ": syntax error" << endl;
-					break;
-				}
-				curlyBracket++;
-				inIfBody = true;
-				ifHandler(line,normalExpressions, "if");
-			}else if (line.find("choose") != string::npos) {
-				chooseHandler(line, normalExpressions); 
-			}else {
-				cout << "Not found" << endl;
-			}
-		}
-	}
+		deleteEdgeSpaces(line);
+		int equalIndex = line.find("=");
+		if(equalIndex != -1) {
+			assignmentHelper(line);
+		} else if(ifCheck(line)){
 
-	if(curlyBracket != 0 || openParanthesis != 0) {
-		cout << "Line " << lineNo << ": syntax error" << endl;
+			ifHandler(line);
+		} else if(whileCheck(line)){
+
+			whileHandler(line);
+		} else if(printCheck(line)){
+
+			printHandler(line);
+		}
+
+		else{
+
+			printError();
+		}
 	}
 
 	outfile << allocateString;
@@ -486,14 +401,4 @@ int main(int argc, char* argv[]) {
 	infile.close();
 	outfile.close();
     return 0;
-
-    	// if(exp1 == 0) {
-    	// 	return exp2;
-    	// }
-    	// if(exp1 > 0) {
-    	// 	return exp3;
-    	// }
-    	// if(exp1 < 0) {
-    	// 	return exp4;
-    	// }
 }
