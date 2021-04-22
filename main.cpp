@@ -228,6 +228,10 @@ void assignmentHelper(string line) {
 bool ifCheck(string& str){
 
 	//deleteEdgeSpaces(str);
+
+	if(str.length()<5)
+		return false;
+
 	if(str.substr(0,2)!="if")
 		return false;
 
@@ -262,6 +266,10 @@ bool ifCheck(string& str){
 bool whileCheck(string& str){
 
 	//deleteEdgeSpaces(str);
+
+	if(str.length()<5)
+		return false;
+
 	if(str.substr(0,5)!="while")
 		return false;
 
@@ -297,6 +305,8 @@ bool whileCheck(string& str){
 bool printCheck(string& str){
 
 	//deleteEdgeSaces(str);
+	if(str.length()<5)
+		return false;
 
 	if(str.substr(0,5)!="print")
 		return false;
