@@ -1,2 +1,5 @@
-a = 99 / 4 * 2
-print(a-90)
+a = 3
+while( choose(a, 0, 123123 ,123123) * c + asd02834023 / 2) {
+	a = 0
+	print(yes+1)
+}

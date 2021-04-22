@@ -7,7 +7,11 @@
 
 using namespace std;
 
-bool expressionCheck(string& str);
+bool expressionCheck(string str);
+void conditionHandler(string str, string type);
+void chooseHandler(string str);
+void calculator(string str);
+void chooseArithmetic(string& str);
 
 vector<string> tokens;
 vector<string> variables;
@@ -22,6 +26,11 @@ string normalExpressions = "";
 bool hasError = false;
 int openParanthesis = 0;
 int curlyBracket = 0;
+bool inWhileBody = false;
+bool inIfBody = false;
+int inIfNo = 1;
+stack<int> chooseIndexes;
+int chooseNo = 0;
 
 void printError() {
 	hasError = true;
@@ -52,6 +61,7 @@ void deleteEdgeSpaces(string& str) {
 	}
 	
 	str = str.substr(firstCharIndex, lastCharIndex - firstCharIndex+1);
+	str.erase(remove(str.begin(), str.end(), '\t'), str.end());
 }
 
 int nthSubstr(int n, const string& s, const string& p) {
@@ -125,15 +135,18 @@ void loadToTemp(string var) {
 	normalExpressions = normalExpressions + "\n\t%t" + to_string(tempNo++) + " = load i32* %" + var;
 }
 
-void checkNestedChoose(string tempVar, int& commaIndex) {
+bool checkNestedChoose(string tempVar, int& commaIndex) {
 	int chooseNum = 0;
     int commaNum = 0;
+    bool isChecked = false;
 	for(int i=0; i<tempVar.length()-6; i++) {
 		string checkTemp = tempVar.substr(i, 6);
 		if(checkTemp == "choose") {
 			chooseNum++;
 		}
 		if(tempVar[i] == ',') {
+			commaIndex = i;
+			isChecked = true;
 			commaNum++;
 		}
 		if((chooseNum*3 == commaNum && chooseNum != 0) || (chooseNum == 0 && commaNum == 1)) {
@@ -142,8 +155,10 @@ void checkNestedChoose(string tempVar, int& commaIndex) {
 	}
 	while(chooseNum>0) {
 		commaIndex = nthSubstr(4, tempVar, ",");
+		isChecked = true;
 		chooseNum--;
 	}
+	return isChecked;
 }
 
 bool chooseCheck(string str) {
@@ -192,14 +207,32 @@ bool chooseCheck(string str) {
                     string forth = tempVar.substr(commaIndex+1);
                     deleteEdgeSpaces(forth);
                     tempVar = forth;
-                    int closeParanthesisIndex = forth.find_last_of(")");
-                    if(closeParanthesisIndex == -1) {
+                    int opened = 0;
+                    int closedIndex = -1;
+                    bool isEntered = false;
+                    for(int i=0; i<tempVar.length(); i++) {
+						if(tempVar[i] == '(') {
+							opened++;
+							isEntered = true;
+						}
+						if(tempVar[i] == ')') {
+							opened--;
+						}
+						if(isEntered && opened == 0) {
+							closedIndex = i;
+							break;
+						}
+					}
+					if(!isEntered) {
+						closedIndex = tempVar.find(")");
+					}
+                    if(closedIndex == -1) {
                         return false;
                     } else {
-                    	forth = forth.substr(0, closeParanthesisIndex);
+                    	forth = forth.substr(0, closedIndex);
                     	deleteEdgeSpaces(forth);
                         if(expressionCheck(forth)) {
-                            if(closeParanthesisIndex == tempVar.length()-1) {
+                            if(closedIndex == tempVar.length()-1) {
                                 return true;
                             }
                         }
@@ -211,7 +244,7 @@ bool chooseCheck(string str) {
     return false;
 }
 
-bool factorCheck(string& str) {
+bool factorCheck(string str) {
 	if(chooseCheck(str)) {
 		return true;
 	} else {		
@@ -236,7 +269,7 @@ bool factorCheck(string& str) {
 	}
 }
 
-bool expressionCheck(string& str) {
+bool expressionCheck(string str) {
 	if(factorCheck(str)) {
 		return true;
 	} else if(hasArithmeticOperations(str)) {
@@ -261,70 +294,6 @@ bool isOperator(char input) {
         return true;
     }
     return false;
-}
-
-bool ifWhileCheck(string& str, string type){
-	deleteEdgeSpaces(str);
-	int length = 4;
-	int startIndex = 2;
-	if(type == "while") {
-		length = 7;
-		startIndex = 5;
-	}
-
-	if((str.length() < length) || (type == "while" && str.substr(0,5) != "while") || (type == "if" && str.substr(0,2) != "if")) {
-		return false;
-	}
-
-	int openParanthesisIndex = str.find("(");
-	int lastCloseParanthes = str.find_last_of(")");
-
-	if(openParanthesisIndex == -1 || lastCloseParanthes == -1) {
-		return false;
-	}
-	
-	for(int i=startIndex; i<openParanthesisIndex; i++){
-		if(str[i] != ' ') {
-			return false;
-		}
-	}
-
-	string condition = str.substr(openParanthesisIndex+1, lastCloseParanthes);
-	int curlyBracketIndex = str.find("{");
-	if(!expressionCheck(condition) || curlyBracketIndex == -1) {
-		return false;
-	}
-
-	for(int i=lastCloseParanthes+1; i<curlyBracketIndex; i++){
-		if(str[i] != ' ') {
-			return false;
-		}
-	}
-
-	if(curlyBracketIndex != str.length()-1) {
-		return false;
-	}
-
-	return true;
-}
-
-void ifWhileHandler(string line, string type){
-	ifWhileCheck(line, type);
-	int no = ifNo;
-	string cond = "ifcond";
-	if(type == "while") {
-		no = whileNo;
-		cond = "whcond";
-	}
-	string condition = line.substr(line.find("(")+1, line.find_last_of(")"));
-	normalExpressions = normalExpressions+"\nbr label %" + cond + to_string(no);
-	normalExpressions = normalExpressions+"\n\nif" + to_string(no) + "cond:";
-	conditionHandler(condition);
-	if(type == "while") {
-		whileNo++;
-	} else {
-		ifNo++;
-	}
 }
 
 void writeOperation(string num1, string num2, string type) {
@@ -367,7 +336,10 @@ string convertToPostfix(string& str) {
        			return "";
        		}
 			newString += str[i];
-            afterOperator = false;
+			if(afterOperator) {
+				afterOperator = false;
+				spaceFound = false;
+			}
 		} else if(str[i] == '(') {
 			st.push('(');
 			spaceFound = false;
@@ -435,6 +407,9 @@ string convertToPostfix(string& str) {
 }
 
 void calculator(string str) {
+	while(!numbers.empty()) {
+		numbers.pop();
+	}
 	string tempVar = str;
 	int spaceIndex = tempVar.find(" ");
 	deleteEdgeSpaces(str);
@@ -469,6 +444,114 @@ void calculator(string str) {
 	}
 }
 
+void conditionHandler(string str, string type) {
+	deleteEdgeSpaces(str);
+	string equality = "ne";
+	if(type == "choose") {
+		equality = "eq";
+	} else if(type == "chooseGreater") {
+		equality = "sgt";
+	} else if (type == "chooseLess") {
+		equality = "slt";
+	}
+	if(variableCheck(str)) {
+		writeToAllocateString(str);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + str;
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
+	} else if(is_number(str)) {
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 "+ str +", 0";
+	} else if(chooseCheck(str)) {
+		chooseHandler(str);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+	} else if(hasArithmeticOperations(str)) {
+		chooseArithmetic(str);
+		str = convertToPostfix(str);
+		if(hasError) {
+			return;
+		}
+		calculator(str);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
+	} else {
+		printError();
+	}
+}
+
+bool ifWhileCheck(string& str, string type) {
+	deleteEdgeSpaces(str);
+	int length = 4;
+	int startIndex = 2;
+	if(type == "while") {
+		length = 7;
+		startIndex = 5;
+	}
+
+	if((str.length() < length) || (type == "while" && str.substr(0,5) != "while") || (type == "if" && str.substr(0,2) != "if")) {
+		return false;
+	}
+
+	int openParanthesisIndex = str.find("(");
+	int lastCloseParanthes = str.find_last_of(")");
+
+	if(openParanthesisIndex == -1 || lastCloseParanthes == -1) {
+		return false;
+	}
+	
+	for(int i=startIndex; i<openParanthesisIndex; i++){
+		if(str[i] != ' ') {
+			return false;
+		}
+	}
+
+	string condition = str.substr(openParanthesisIndex+1, lastCloseParanthes - openParanthesisIndex-1);
+	int curlyBracketIndex = str.find("{");
+	deleteEdgeSpaces(condition);
+	if(!expressionCheck(condition) || curlyBracketIndex == -1) {
+		return false;
+	}
+
+	for(int i=lastCloseParanthes+1; i<curlyBracketIndex; i++){
+		if(str[i] != ' ') {
+			return false;
+		}
+	}
+
+	if(curlyBracketIndex != str.length()-1) {
+		return false;
+	}
+
+	return true;
+}
+
+void ifWhileHandler(string line, string type){
+	int no = ifNo;
+	string cond = "ifcond";
+	string body = "ifbody";
+	string end = "ifend";
+	if(type == "while") {
+		no = whileNo;
+		cond = "whcond";
+		body = "whbody";
+		end = "whend";
+	}
+	int openIndex = line.find("(") + 1;
+	int closeIndex = line.find_last_of(")");
+	string condition = line.substr(openIndex, closeIndex - openIndex);
+	normalExpressions = normalExpressions+"\n\tbr label %" + cond + to_string(no);
+	normalExpressions = normalExpressions+"\n\n" + cond + to_string(no) + ":";
+	if(type != "while") {
+		chooseIndexes.push(ifNo);
+		ifNo++;
+	}
+	conditionHandler(condition, type);
+	if(type != "while") {
+		no = chooseIndexes.top();
+		chooseIndexes.pop();
+		inIfNo = no;
+	}
+	normalExpressions = normalExpressions+"\n\tbr i1 %t" + to_string(tempNo++) +", label %" + body + to_string(no) + ", label %" + end + to_string(no);
+	normalExpressions = normalExpressions+"\n\n" + body + to_string(no) + ":";
+}
 
 bool printCheck(string& str) {
 	deleteEdgeSpaces(str);
@@ -508,48 +591,125 @@ bool printCheck(string& str) {
     return false;
 }
 
+void chooseIfHelper(string var1, string var2, string type) {
+	int no = ifNo;
+	writeToAllocateString("c" + to_string(chooseNo));
+	normalExpressions = normalExpressions+"\n\tbr label %ifcond" + to_string(no);
+	normalExpressions = normalExpressions+"\n\nifcond" + to_string(no) + ":";
+	conditionHandler(var1, type);
+	normalExpressions = normalExpressions+"\n\tbr i1 %t" + to_string(tempNo++) +", label %ifbody" + to_string(no) + ", label %ifend" + to_string(no);
+	normalExpressions = normalExpressions+"\n\nifbody" + to_string(no) + ":";
+	if(variableCheck(var2) || is_number(var2)) {
+		writeToStoreString("c" + to_string(chooseNo), var2);
+	} else if(hasArithmeticOperations(var2)) {
+		chooseArithmetic(var2);
+		var2 = convertToPostfix(var2);
+		if(hasError) {
+			return;
+		}
+		calculator(var2);
+		writeToStoreString("c" + to_string(chooseNo), "%t" + to_string(tempNo-1));
+	} else {
+		printError();
+		return;
+	}
+
+	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(no);
+	normalExpressions = normalExpressions + "\n\nifend" + to_string(no) + ":\n";
+	ifNo++;
+}
+
 void chooseHandler(string line) {
 	int commaIndex = line.find(",");
+	int firstParanthesis = line.find("(");
+	int lastParanthesis = line.find_last_of(")");
+	line = line.substr(firstParanthesis+1, lastParanthesis - firstParanthesis);
     checkNestedChoose(line, commaIndex);
-    string first = line.substr(7, commaIndex-7);
-    //IF HANDLER
-    string temp = line.substr(commaIndex+1);
-    commaIndex = temp.find(",");
-    checkNestedChoose(temp, commaIndex);
-    string second = temp.substr(0, commaIndex);
-    //IF HANDLER
-    temp = temp.substr(commaIndex+1);
-    commaIndex = temp.find(",");
-    checkNestedChoose(temp, commaIndex);
-    string third = temp.substr(0, commaIndex);
-    //IF HANDLER
-    temp = temp.substr(commaIndex+1);
-    int closeIndex = temp.find_last_of(")");
-    string forth = temp.substr(0, closeIndex);
-    //IF HANDLER
+    string first = line.substr(0, commaIndex);
+
+    line = line.substr(commaIndex+1);
+    if(!checkNestedChoose(line, commaIndex)) {
+    	commaIndex = line.find(",");
+    }
+    string second = line.substr(0, commaIndex);
+    deleteEdgeSpaces(first);
+    deleteEdgeSpaces(second);
+	chooseIfHelper(first, second, "choose");
+	if(hasError) {
+		return;
+	}
+    
+    line = line.substr(commaIndex+1);
+    if(!checkNestedChoose(line, commaIndex)) {
+    	commaIndex = line.find(",");
+    }
+    string third = line.substr(0, commaIndex);
+    deleteEdgeSpaces(third);
+	chooseIfHelper(first, third, "chooseGreater");
+	if(hasError) {
+		return;
+	}
+
+    line = line.substr(commaIndex+1);
+    string forth = line.substr(0, line.length()-1);
+    deleteEdgeSpaces(forth);
+    chooseIfHelper(first, forth, "chooseLess");
 }
 
 void printHandler(string line) {
-	if(!printCheck(line)) {
-		printError();
-	} else {
-		spaceDeleter(line);
-		if(variableCheck(line)) {
-			writeToAllocateString(line);
-			loadToTemp(line);
-			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
-		} else if(is_number(line)) {
-			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + line + " )";
-		} else if(chooseCheck(line)) {
-			chooseHandler(line);
-			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
-		} else if(hasArithmeticOperations(line)) {
-			line = convertToPostfix(line);
-			calculator(line);
-			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
-		} else {
-			printError();
+	spaceDeleter(line);
+	if(variableCheck(line)) {
+		writeToAllocateString(line);
+		loadToTemp(line);
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+	} else if(is_number(line)) {
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + line + " )";
+	} else if(chooseCheck(line)) {
+		chooseHandler(line);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+	} else if(hasArithmeticOperations(line)) {
+		chooseArithmetic(line);
+		line = convertToPostfix(line);
+		if(hasError) {
+			return;
 		}
+		calculator(line);
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+	} else {
+		printError();
+	}
+}
+
+void chooseArithmetic(string& secondPart) {
+	int chooseIndex = secondPart.find("choose");
+	int opened = 0;
+	int closedIndex = 0;
+	bool isEntered = false;
+	while(chooseIndex != -1) {
+		for(int i=chooseIndex; i<secondPart.length(); i++) {
+			if(secondPart[i] == '(') {
+				opened++;
+				isEntered = true;
+			}
+			if(secondPart[i] == ')') {
+				opened--;
+			}
+			if(isEntered && opened == 0) {
+				closedIndex = i;
+				break;
+			}
+		}
+		isEntered = false;
+		string chooseContent = secondPart.substr(chooseIndex, closedIndex - chooseIndex+1);
+		chooseHandler(chooseContent);
+		int max = secondPart.length();
+		string willAdd = "";
+		if(closedIndex < max-1) {
+			willAdd = secondPart.substr(closedIndex+1);
+		}
+		secondPart = secondPart.substr(0, chooseIndex) + "c" + to_string(chooseNo++) + willAdd;
+		chooseIndex = secondPart.find("choose");
 	}
 }
 
@@ -565,9 +725,14 @@ void assignmentHandler(string firstPart, string secondPart) {
 		writeToStoreString(firstPart, secondPart);
 	} else if(chooseCheck(secondPart)) {
 		chooseHandler(secondPart);
-		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
+		writeToStoreString(firstPart, "t"+to_string(tempNo-1));
 	} else if(hasArithmeticOperations(secondPart)) {
+		chooseArithmetic(secondPart);
 		secondPart = convertToPostfix(secondPart);
+		if(hasError) {
+			return;
+		}
 		calculator(secondPart);
 		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
 	} else {
@@ -610,16 +775,58 @@ int main(int argc, char* argv[]) {
 		lineNo++;
 		string line = tokens[k];
 		deleteEdgeSpaces(line);
+		if(line == "") {
+			continue;
+		}
+		int commentIndex = line.find("#");
+		if(commentIndex != -1) {
+			line = line.substr(0, commentIndex);
+		}
 		int equalIndex = line.find("=");
 		int printIndex = line.find("print");
 		if(equalIndex != -1) {
 			assignmentHelper(line);
-		} else if(printIndex != -1) {
+		} else if(ifWhileCheck(line, "if")){
+			if(inWhileBody || inIfBody) {
+				printError();
+				break;
+			}
+			inIfBody = true;
+			curlyBracket++;
+			ifWhileHandler(line, "if");
+		} else if(ifWhileCheck(line, "while")){
+			if(inWhileBody || inIfBody) {
+				printError();
+				break;
+			}
+			inWhileBody = true;
+			curlyBracket++;
+			ifWhileHandler(line, "while");
+		} else if(printCheck(line)){
 			printHandler(line);
-		} 
-		else {
-			cout << "BAŞKA" << endl;
+		} else if(line == "}") {
+			if(inWhileBody) {
+				inWhileBody = false;
+				normalExpressions = normalExpressions + "\n\tbr label %whcond" + to_string(whileNo);
+				normalExpressions = normalExpressions + "\n\nwhend" + to_string(whileNo) + ":\n";
+				whileNo++;
+				curlyBracket--;
+			} else if(inIfBody) {
+				inIfBody = false;
+				normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(inIfNo);
+				normalExpressions = normalExpressions + "\n\nifend" + to_string(inIfNo) + ":\n";
+				curlyBracket--;
+			} else {
+				printError();
+				break;
+			}
+		} else {
+			printError();
 		}
+	}
+
+	if(curlyBracket != 0 && !hasError) {
+		printError();
 	}
 
 	outfile << allocateString;

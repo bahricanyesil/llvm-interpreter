@@ -5,14 +5,77 @@ declare i32 @printf(i8*, ...)
 define i32 @main() {
 
 	%a = alloca i32
+	%c0 = alloca i32
+	%c = alloca i32
+	%asd02834023 = alloca i32
+	%yes = alloca i32
 
 	store i32 0, i32* %a
+	store i32 0, i32* %c0
+	store i32 0, i32* %c
+	store i32 0, i32* %asd02834023
+	store i32 0, i32* %yes
 
-	%t1 = udiv i32 99, 4
-	%t2 = mul i32 %t1, 2
-	store i32 %t2, i32* %a
+	store i32 3, i32* %a
+	br label %whcond1
+
+whcond1:
+	br label %ifcond1
+
+ifcond1:
+	%t1 = load i32* %a
+	%t2 = icmp eq i32 %t1, 0
+	br i1 %t2, label %ifbody1, label %ifend1
+
+ifbody1:
+	store i32 0, i32* %c0
+	br label %ifend1
+
+ifend1:
+
+	br label %ifcond2
+
+ifcond2:
 	%t3 = load i32* %a
-	%t4 = sub i32 %t3, 90
-	call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t4 )
+	%t4 = icmp sgt i32 %t3, 0
+	br i1 %t4, label %ifbody2, label %ifend2
+
+ifbody2:
+	store i32 123123, i32* %c0
+	br label %ifend2
+
+ifend2:
+
+	br label %ifcond3
+
+ifcond3:
+	%t5 = load i32* %a
+	%t6 = icmp slt i32 %t5, 0
+	br i1 %t6, label %ifbody3, label %ifend3
+
+ifbody3:
+	store i32 123123, i32* %c0
+	br label %ifend3
+
+ifend3:
+
+	%t7 = load i32* %c
+	%t8 = load i32* %c0
+	%t9 = mul i32 %t8, %t7
+	%t10 = load i32* %asd02834023
+	%t11 = udiv i32 %t10, 2
+	%t12 = add i32 %t9, %t11
+	%t13 = icmp ne i32 %t12, 0
+	br i1 %t13, label %whbody1, label %whend1
+
+whbody1:
+	store i32 0, i32* %a
+	%t14 = load i32* %yes
+	%t15 = add i32 %t14, 1
+	call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t15 )
+	br label %whcond1
+
+whend1:
+
 	ret i32 0
 }
