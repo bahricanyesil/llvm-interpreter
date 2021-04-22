@@ -236,18 +236,10 @@ bool factorCheck(string& str) {
 	}
 }
 
-bool arithmeticOperationCheck(string str) {
-	if(!hasArithmeticOperations(str)) {
-		return false;
-	}
-
-
-}
-
 bool expressionCheck(string& str) {
 	if(factorCheck(str)) {
 		return true;
-	} else if(arithmeticOperationCheck(str)) {
+	} else if(hasArithmeticOperations(str)) {
 		return true;
 	} else {
 		return false;
@@ -271,11 +263,98 @@ bool isOperator(char input) {
     return false;
 }
 
+bool ifWhileCheck(string& str, string type){
+	deleteEdgeSpaces(str);
+	int length = 4;
+	int startIndex = 2;
+	if(type == "while") {
+		length = 7;
+		startIndex = 5;
+	}
+
+	if((str.length() < length) || (type == "while" && str.substr(0,5) != "while") || (type == "if" && str.substr(0,2) != "if")) {
+		return false;
+	}
+
+	int openParanthesisIndex = str.find("(");
+	int lastCloseParanthes = str.find_last_of(")");
+
+	if(openParanthesisIndex == -1 || lastCloseParanthes == -1) {
+		return false;
+	}
+	
+	for(int i=startIndex; i<openParanthesisIndex; i++){
+		if(str[i] != ' ') {
+			return false;
+		}
+	}
+
+	string condition = str.substr(openParanthesisIndex+1, lastCloseParanthes);
+	int curlyBracketIndex = str.find("{");
+	if(!expressionCheck(condition) || curlyBracketIndex == -1) {
+		return false;
+	}
+
+	for(int i=lastCloseParanthes+1; i<curlyBracketIndex; i++){
+		if(str[i] != ' ') {
+			return false;
+		}
+	}
+
+	if(curlyBracketIndex != str.length()-1) {
+		return false;
+	}
+
+	return true;
+}
+
+void ifWhileHandler(string line, string type){
+	ifWhileCheck(line, type);
+	int no = ifNo;
+	string cond = "ifcond";
+	if(type == "while") {
+		no = whileNo;
+		cond = "whcond";
+	}
+	string condition = line.substr(line.find("(")+1, line.find_last_of(")"));
+	normalExpressions = normalExpressions+"\nbr label %" + cond + to_string(no);
+	normalExpressions = normalExpressions+"\n\nif" + to_string(no) + "cond:";
+	conditionHandler(condition);
+	if(type == "while") {
+		whileNo++;
+	} else {
+		ifNo++;
+	}
+}
+
+void writeOperation(string num1, string num2, string type) {
+	string firstTemp = num1;
+	string secondTemp = num2;
+	if(!is_number(num1)) {
+		if(num1.find("%t") == string::npos) {
+			firstTemp = "%t" + to_string(tempNo++);
+			normalExpressions = normalExpressions + "\n\t" + firstTemp + " = load i32* %" + num1;
+		} else {
+			firstTemp = num1;
+		}
+	}
+	if(!is_number(num2)) {
+		if(num2.find("%t") == string::npos) {
+			secondTemp = "%t" + to_string(tempNo++);
+			normalExpressions = normalExpressions + "\n\t" + secondTemp + " = load i32* %" + num2;
+		} else {
+			secondTemp = num2;
+		}
+	}
+	string newTemp = "%t" + to_string(tempNo++);
+	normalExpressions = normalExpressions + "\n\t" + newTemp + " = " + type + " i32 " + secondTemp + ", " + firstTemp;
+	numbers.push(newTemp);
+}
+
 string convertToPostfix(string& str) {
 	stack<char> st;
 	st.push('E');
     string newString;
-    str = "abc + d ";
     int operatorNum = 0;
     int variableNum = 0;
     deleteEdgeSpaces(str);
@@ -352,8 +431,42 @@ string convertToPostfix(string& str) {
 		printError();
 		return "";
 	}
-	cout << newString << endl;
 	return newString;
+}
+
+void calculator(string str) {
+	string tempVar = str;
+	int spaceIndex = tempVar.find(" ");
+	deleteEdgeSpaces(str);
+	while(spaceIndex != -1) {
+		string variable = tempVar.substr(0, spaceIndex);
+		if(isOperator(variable)) {
+			string num1 = numbers.top();
+			numbers.pop();
+			string num2 = numbers.top();
+			numbers.pop();
+			if(variable == "+") {
+				writeOperation(num1, num2, "add");
+			} else if(variable == "-") {
+				writeOperation(num1, num2, "sub");
+			} else if(variable == "*") {
+				writeOperation(num1, num2, "mul");
+			} else if (variable == "/") {
+				writeOperation(num1, num2, "udiv");
+			}
+		} else if (is_number(variable) || variableCheck(variable)) {
+			writeToAllocateString(variable);
+			numbers.push(variable);
+		} else {
+			printError();
+			return;
+		}
+		if(spaceIndex == tempVar.length()-1) {
+			break;
+		}
+		tempVar = tempVar.substr(spaceIndex+1);
+		spaceIndex = tempVar.find(" ");
+	}
 }
 
 
@@ -431,8 +544,9 @@ void printHandler(string line) {
 			chooseHandler(line);
 			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
 		} else if(hasArithmeticOperations(line)) {
-			//TODO: POSTFIX
-			//TODO: CALCULATOR
+			line = convertToPostfix(line);
+			calculator(line);
+			normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
 		} else {
 			printError();
 		}
@@ -453,8 +567,9 @@ void assignmentHandler(string firstPart, string secondPart) {
 		chooseHandler(secondPart);
 		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
 	} else if(hasArithmeticOperations(secondPart)) {
-		//TODO: POSTFIX
-		//TODO: CALCULATOR
+		secondPart = convertToPostfix(secondPart);
+		calculator(secondPart);
+		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
 	} else {
 		printError();
 	}
@@ -490,24 +605,22 @@ int main(int argc, char* argv[]) {
 	while(getline(infile, token)) {
 		tokens.push_back(token);	
 	}
-	string a = "a + b + c * d * ( 4 / 1)";
-	convertToPostfix(a);
 
-	// for(int k=0; k<tokens.size() && !hasError; k++) {
-	// 	lineNo++;
-	// 	string line = tokens[k];
-	// 	deleteEdgeSpaces(line);
-	// 	int equalIndex = line.find("=");
-	// 	int printIndex = line.find("print");
-	// 	if(equalIndex != -1) {
-	// 		assignmentHelper(line);
-	// 	} else if(printIndex != -1) {
-	// 		printHandler(line);
-	// 	} 
-	// 	else {
-	// 		cout << "BAŞKA" << endl;
-	// 	}
-	// }
+	for(int k=0; k<tokens.size() && !hasError; k++) {
+		lineNo++;
+		string line = tokens[k];
+		deleteEdgeSpaces(line);
+		int equalIndex = line.find("=");
+		int printIndex = line.find("print");
+		if(equalIndex != -1) {
+			assignmentHelper(line);
+		} else if(printIndex != -1) {
+			printHandler(line);
+		} 
+		else {
+			cout << "BAŞKA" << endl;
+		}
+	}
 
 	outfile << allocateString;
 	outfile << "\n" + storeDefaultString;
