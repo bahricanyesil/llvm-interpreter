@@ -9,7 +9,7 @@ using namespace std;
 
 bool expressionCheck(string& str);
 bool ifCheck(string& str);
-bool whileCheck(string% str);
+bool whileCheck(string& str);
 
 vector<string> tokens;
 vector<string> variables;
@@ -337,8 +337,8 @@ void conditionHandler(string& condition){
 void ifHandler(string& line){
 
 	string condition=line.substr(line.find("(")+1,line.find_last_of(")"));
-	normalExpressions+="\nbr label \%ifcond"+ifNo;
-	normalExpressions+="\n\nif"+ifNo+"cond:"
+	normalExpressions=normalExpressions+"\nbr label \%ifcond"+to_string(ifNo);
+	normalExpressions=normalExpressions+"\n\nif"+to_string(ifNo)+"cond:";
 	conditionHandler(condition);
 	ifNo++;
 }
@@ -346,10 +346,11 @@ void ifHandler(string& line){
 void whileHandler(string& line){
 
 	string condition=line.substr(line.find("(")+1,line.find_last_of(")"));
-	normalExpressions+="\nbr label %whcond"+ifNo;
-	normalExpressions+="\n\nwh"+ifNo+"cond:"
+	normalExpressions=normalExpressions+"\nbr label %whcond"+to_string(whileNo);
+	normalExpressions=normalExpressions+"\n\nwh"+to_string(whileNo)+"cond:";
 	conditionHandler(condition);	
 	whileNo++;
+	
 }
 
 void printHandler(string& line){
@@ -357,7 +358,7 @@ void printHandler(string& line){
 	string inside=line.substr(line.find("(")+1,line.find_last_of(")"));
 	//expressionHandler(inside);
 
-	normalExpressions+="\ncall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t"+tempNo-1+" )";
+	normalExpressions=normalExpressions+"\ncall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t"+to_string(tempNo-1)+" )";
 }
 
 
