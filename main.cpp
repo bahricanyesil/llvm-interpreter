@@ -12,17 +12,19 @@ void conditionHandler(string str, string type);
 void chooseHandler(string str);
 void calculator(string str);
 void chooseArithmetic(string& str);
+bool writeToAllocateString(string str);
 
 vector<string> tokens;
 vector<string> variables;
 stack<string> numbers;
-int lineNo = 0;
+int lineNo = -1;
 int tempNo = 1;
 int whileNo = 1;
 int ifNo = 1;
 string allocateString = "";
 string storeDefaultString = "";
 string normalExpressions = "";
+string errorText = "";
 bool hasError = false;
 int openParanthesis = 0;
 int curlyBracket = 0;
@@ -30,11 +32,16 @@ bool inWhileBody = false;
 bool inIfBody = false;
 int inIfNo = 1;
 stack<int> chooseIndexes;
+vector<string> chooseStore;
 int chooseNo = 0;
+string lastChoose = "";
 
 void printError() {
-	hasError = true;
-	cout << "Line " << lineNo << ": syntax error" << endl;
+	if(!hasError) {
+		hasError = true;
+		cout << "Line " << lineNo << ": syntax error" << endl;
+		errorText = "Line " + to_string(lineNo) + ": syntax error";
+	}
 }
 
 void spaceDeleter(string& str) {
@@ -82,7 +89,7 @@ bool isOperator(const string str) {
 }
 
 bool isValidChar(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '_');
 }
 
 bool is_number(const string& s) {
@@ -99,6 +106,14 @@ bool letterCheck(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
+bool findVar(string str) {
+	return find(variables.begin(), variables.end(), str) != variables.end();
+}
+
+bool findChoose(string str) {
+	return find(chooseStore.begin(), chooseStore.end(), str) != chooseStore.end();
+}
+
 bool variableCheck(string str) {
 	deleteEdgeSpaces(str);
 	if(!letterCheck(str[0])) {
@@ -110,11 +125,6 @@ bool variableCheck(string str) {
 		}
 	}
 	return true;
-}
-
-
-bool findVar(const string str) {
-	return find(variables.begin(), variables.end(), str) != variables.end();
 }
 
 bool writeToAllocateString(string str) {
@@ -149,20 +159,19 @@ bool checkNestedChoose(string tempVar, int& commaIndex) {
 			isChecked = true;
 			commaNum++;
 		}
-		if((chooseNum*3 == commaNum && chooseNum != 0) || (chooseNum == 0 && commaNum == 1)) {
+		if((4+3*(chooseNum-1) == commaNum && chooseNum != 0) || (chooseNum == 0 && commaNum == 1)) {
 			break;
 		}
 	}
-	while(chooseNum>0) {
-		commaIndex = nthSubstr(4, tempVar, ",");
+	if(chooseNum>0) {
+		commaIndex = nthSubstr(4+3*(chooseNum-1), tempVar, ",");
 		isChecked = true;
-		chooseNum--;
 	}
 	return isChecked;
 }
 
 bool chooseCheck(string str) {
-    if(str.length() < 14) {
+    if(str.length() < 12) {
         return false;
     } else if(str.substr(0, 6) == "choose") {
         string tempVar = str.substr(6);
@@ -178,6 +187,9 @@ bool chooseCheck(string str) {
             }
         }
         int commaIndex = tempVar.find(",");
+        if(commaIndex == -1) {
+            return false;
+        }
         checkNestedChoose(tempVar, commaIndex);
 		if(commaIndex == -1) {
             return false;
@@ -187,6 +199,9 @@ bool chooseCheck(string str) {
         if(expressionCheck(first)) {
             tempVar = tempVar.substr(commaIndex+1);
             commaIndex = tempVar.find(",");
+            if(commaIndex == -1) {
+	            return false;
+	        }
             checkNestedChoose(tempVar, commaIndex);
             if(commaIndex == -1) {
                 return false;
@@ -197,6 +212,9 @@ bool chooseCheck(string str) {
             if(expressionCheck(second)) {
                 tempVar = tempVar.substr(commaIndex+1);
                 commaIndex = tempVar.find(",");
+                if(commaIndex == -1) {
+		            return false;
+		        }
                 checkNestedChoose(tempVar, commaIndex);
                 if(commaIndex == -1) {
                     return false;
@@ -207,25 +225,20 @@ bool chooseCheck(string str) {
                     string forth = tempVar.substr(commaIndex+1);
                     deleteEdgeSpaces(forth);
                     tempVar = forth;
-                    int opened = 0;
                     int closedIndex = -1;
-                    bool isEntered = false;
+                    int openedParantNum = 0;
                     for(int i=0; i<tempVar.length(); i++) {
-						if(tempVar[i] == '(') {
-							opened++;
-							isEntered = true;
-						}
-						if(tempVar[i] == ')') {
-							opened--;
-						}
-						if(isEntered && opened == 0) {
-							closedIndex = i;
-							break;
-						}
-					}
-					if(!isEntered) {
-						closedIndex = tempVar.find(")");
-					}
+                    	if(tempVar[i] == '(') {
+                    		openedParantNum++;
+                    	}
+                    	if(tempVar[i] == ')') {
+                    		if(openedParantNum == 0) {
+                    			closedIndex = i;
+                    			break;
+                    		}
+                    		openedParantNum--;
+                    	}
+                    }
                     if(closedIndex == -1) {
                         return false;
                     } else {
@@ -427,6 +440,10 @@ void calculator(string str) {
 			} else if(variable == "*") {
 				writeOperation(num1, num2, "mul");
 			} else if (variable == "/") {
+				if(num1 == "0") {
+					printError();
+					return;
+				}
 				writeOperation(num1, num2, "udiv");
 			}
 		} else if (is_number(variable) || variableCheck(variable)) {
@@ -461,9 +478,15 @@ void conditionHandler(string str, string type) {
 	} else if(is_number(str)) {
 		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 "+ str +", 0";
 	} else if(chooseCheck(str)) {
-		chooseHandler(str);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+		if(findChoose(str)) {
+			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+		} else {
+			chooseStore.push_back(str);
+			chooseHandler(str);
+			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+		}
 	} else if(hasArithmeticOperations(str)) {
 		chooseArithmetic(str);
 		str = convertToPostfix(str);
@@ -593,22 +616,30 @@ bool printCheck(string& str) {
 
 void chooseIfHelper(string var1, string var2, string type) {
 	int no = ifNo;
-	writeToAllocateString("c" + to_string(chooseNo));
+	ifNo++;
+	writeToAllocateString("mylocalsupervar" + to_string(chooseNo));
 	normalExpressions = normalExpressions+"\n\tbr label %ifcond" + to_string(no);
 	normalExpressions = normalExpressions+"\n\nifcond" + to_string(no) + ":";
 	conditionHandler(var1, type);
 	normalExpressions = normalExpressions+"\n\tbr i1 %t" + to_string(tempNo++) +", label %ifbody" + to_string(no) + ", label %ifend" + to_string(no);
 	normalExpressions = normalExpressions+"\n\nifbody" + to_string(no) + ":";
-	if(variableCheck(var2) || is_number(var2)) {
-		writeToStoreString("c" + to_string(chooseNo), var2);
-	} else if(hasArithmeticOperations(var2)) {
+	if(variableCheck(var2)) {
+		writeToAllocateString(var2);
+		loadToTemp(var2);
+		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%t"+to_string(tempNo-1));
+	} else if (is_number(var2)) {
+		writeToStoreString("mylocalsupervar" + to_string(chooseNo), var2);
+	}  else if(chooseCheck(var2)) {
+		chooseHandler(var2);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+	}  else if(hasArithmeticOperations(var2)) {
 		chooseArithmetic(var2);
 		var2 = convertToPostfix(var2);
 		if(hasError) {
 			return;
 		}
 		calculator(var2);
-		writeToStoreString("c" + to_string(chooseNo), "%t" + to_string(tempNo-1));
+		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%t" + to_string(tempNo-1));
 	} else {
 		printError();
 		return;
@@ -616,7 +647,6 @@ void chooseIfHelper(string var1, string var2, string type) {
 
 	normalExpressions = normalExpressions + "\n\tbr label %ifend" + to_string(no);
 	normalExpressions = normalExpressions + "\n\nifend" + to_string(no) + ":\n";
-	ifNo++;
 }
 
 void chooseHandler(string line) {
@@ -666,7 +696,7 @@ void printHandler(string line) {
 		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + line + " )";
 	} else if(chooseCheck(line)) {
 		chooseHandler(line);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
 		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
 	} else if(hasArithmeticOperations(line)) {
 		chooseArithmetic(line);
@@ -708,7 +738,7 @@ void chooseArithmetic(string& secondPart) {
 		if(closedIndex < max-1) {
 			willAdd = secondPart.substr(closedIndex+1);
 		}
-		secondPart = secondPart.substr(0, chooseIndex) + "c" + to_string(chooseNo++) + willAdd;
+		secondPart = secondPart.substr(0, chooseIndex) + "mylocalsupervar" + to_string(chooseNo) + willAdd;
 		chooseIndex = secondPart.find("choose");
 	}
 }
@@ -719,14 +749,15 @@ void assignmentHandler(string firstPart, string secondPart) {
 	writeToAllocateString(firstPart);
 	writeToAllocateString(secondPart);
 	if(variableCheck(secondPart)) {
+		writeToAllocateString(secondPart);
 		loadToTemp(secondPart);
 		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
 	} else if(is_number(secondPart)) {
 		writeToStoreString(firstPart, secondPart);
 	} else if(chooseCheck(secondPart)) {
 		chooseHandler(secondPart);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "c" +to_string(chooseNo++);
-		writeToStoreString(firstPart, "t"+to_string(tempNo-1));
+		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+		writeToStoreString(firstPart, "%t"+to_string(tempNo-1));
 	} else if(hasArithmeticOperations(secondPart)) {
 		chooseArithmetic(secondPart);
 		secondPart = convertToPostfix(secondPart);
@@ -760,30 +791,26 @@ int main(int argc, char* argv[]) {
 	ofstream outfile;
 	outfile.open(argv[2]);
 
-	outfile << "; ModuleID = 'mylang2ir'";
-	outfile << "\ndeclare i32 @printf(i8*, ...)";
-	outfile << "\n@print.str = constant [4 x i8] c\"%d\\0A\\00\"";
-	outfile << "\n\ndefine i32 @main() {\n";
-
 	string token;
 
 	while(getline(infile, token)) {
 		tokens.push_back(token);	
 	}
+	lastChoose = "";
 
 	for(int k=0; k<tokens.size() && !hasError; k++) {
 		lineNo++;
 		string line = tokens[k];
 		deleteEdgeSpaces(line);
-		if(line == "") {
-			continue;
-		}
 		int commentIndex = line.find("#");
 		if(commentIndex != -1) {
 			line = line.substr(0, commentIndex);
 		}
 		int equalIndex = line.find("=");
 		int printIndex = line.find("print");
+		if(line == "") {
+			continue;
+		}
 		if(equalIndex != -1) {
 			assignmentHelper(line);
 		} else if(ifWhileCheck(line, "if")){
@@ -829,10 +856,18 @@ int main(int argc, char* argv[]) {
 		printError();
 	}
 
-	outfile << allocateString;
-	outfile << "\n" + storeDefaultString;
-	outfile << "\n" + normalExpressions;
-	outfile << "\n\tret i32 0\n}";
+	if(!hasError) {
+		outfile << "; ModuleID = 'mylang2ir'";
+		outfile << "\ndeclare i32 @printf(i8*, ...)";
+		outfile << "\n@print.str = constant [4 x i8] c\"%d\\0A\\00\"";
+		outfile << "\n\ndefine i32 @main() {\n";
+		outfile << allocateString;
+		outfile << "\n" + storeDefaultString;
+		outfile << "\n" + normalExpressions;
+		outfile << "\n\tret i32 0\n}";
+	} else {
+		outfile << errorText << endl;
+	}
 
 	infile.close();
 	outfile.close();
