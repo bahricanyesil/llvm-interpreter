@@ -14,13 +14,18 @@ void calculator(string str);
 void chooseArithmetic(string& str);
 bool writeToAllocateString(string str);
 
+// Tokens vector to read the lines from the input file.
 vector<string> tokens;
+// Variables vector to store the allocated variables.
 vector<string> variables;
+// Numbers stack to store the numbers while doing calculations.
 stack<string> numbers;
+// Number of line, temporary variables, while and if loops.
 int lineNo = -1;
 int tempNo = 1;
 int whileNo = 1;
 int ifNo = 1;
+// Strings will be written to the outputfile. Stores the allocation and other texts.
 string allocateString = "";
 string storeDefaultString = "";
 string normalExpressions = "";
@@ -36,6 +41,7 @@ vector<string> chooseStore;
 int chooseNo = 0;
 string lastChoose = "";
 
+// Prints the error when the program encounters with it.
 void printError() {
 	if(!hasError) {
 		hasError = true;
@@ -44,6 +50,7 @@ void printError() {
 	}
 }
 
+// Deletes the all spaces and tabs in a string.
 void spaceDeleter(string& str) {
 	string::iterator end_pos = remove(str.begin(), str.end(), ' ');
 	str.erase(end_pos, str.end());
@@ -51,6 +58,7 @@ void spaceDeleter(string& str) {
 	str.erase(end_pos2, str.end());
 }
 
+// Deletes the spaces at the both end of a stirng. Does not delete the middle ones.
 void deleteEdgeSpaces(string& str) {
 	int firstCharIndex = 0;
 	int lastCharIndex = str.length()-1;
@@ -71,49 +79,62 @@ void deleteEdgeSpaces(string& str) {
 	str.erase(remove(str.begin(), str.end(), '\t'), str.end());
 }
 
+// Finds the nth substring of a string in another string if it contains.
 int nthSubstr(int n, const string& s, const string& p) {
    string::size_type i = s.find(p);
 
    int j;
-   for (j = 1; j < n && i != string::npos; ++j)
+   for (j = 1; j < n && i != string::npos; ++j) {
       i = s.find(p, i+1);
+   }
 
-   if (j == n)
-     return(i);
-   else
-     return(-1);
+   if (j == n) {
+     return i;
+   }
+   else {
+     return -1;
+   }
 }
 
+// Checks whether a string is operator or not.
 bool isOperator(const string str) {
 	return (str == "*" || str == "/" || str == "+" || str == "-");
 }
 
+// Checks whether a char is a valid char (alphanumerical character) or not.
 bool isValidChar(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '_');
 }
 
+// Checks whether a string is a number or not.
 bool is_number(const string& s) {
     string::const_iterator it = s.begin();
     while (it != s.end() && isdigit(*it)) ++it;
     return !s.empty() && it == s.end();
 }
 
+// Checks whether a string contains any arithmetic operator or not.
 bool hasArithmeticOperations(string &line) {
 	return !(line.find("+") == string::npos && line.find("-") == string::npos && line.find("*") == string::npos && line.find("/") == string::npos);
 }
 
+// Checks whether a char is a letter or not.
 bool letterCheck(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
+// Checks the string is allocated before by looking up to the variables vector.
 bool findVar(string str) {
 	return find(variables.begin(), variables.end(), str) != variables.end();
 }
 
+// Checks whether the choose string is processed before.
 bool findChoose(string str) {
 	return find(chooseStore.begin(), chooseStore.end(), str) != chooseStore.end();
 }
 
+// Checks the string is a valid variable or not.
+// A valid variable should start with a letter and followed by alphanumerical characters.
 bool variableCheck(string str) {
 	deleteEdgeSpaces(str);
 	if(!letterCheck(str[0])) {
@@ -127,6 +148,7 @@ bool variableCheck(string str) {
 	return true;
 }
 
+// Allocates the string with default 0 value.
 bool writeToAllocateString(string str) {
 	if(!findVar(str) && variableCheck(str)) {
 		allocateString += "\n\t%" + str + " = alloca i32";
@@ -137,14 +159,17 @@ bool writeToAllocateString(string str) {
 	return false;
 }
 
+// Stores a value or temp variable in a string.
 void writeToStoreString(string str1, string str2) {
 	normalExpressions += "\n\tstore i32 " + str2 + ", i32* %" + str1;
 }
 
+// Loads a value to a temp variable. The value can be a number or a variable.
 void loadToTemp(string var) {
 	normalExpressions = normalExpressions + "\n\t%t" + to_string(tempNo++) + " = load i32* %" + var;
 }
 
+// Checks the nested choose if there exists. Changes the comma index with a correct index if there are nested chooses.
 bool checkNestedChoose(string tempVar, int& commaIndex) {
 	int chooseNum = 0;
     int commaNum = 0;
@@ -159,17 +184,20 @@ bool checkNestedChoose(string tempVar, int& commaIndex) {
 			isChecked = true;
 			commaNum++;
 		}
+		// If passes enough commas when it is compared with the choose num, breaks the loop.
 		if((4+3*(chooseNum-1) == commaNum && chooseNum != 0) || (chooseNum == 0 && commaNum == 1)) {
 			break;
 		}
 	}
 	if(chooseNum>0) {
+		// Finding the nth substring of "," by using the number of choose.
 		commaIndex = nthSubstr(4+3*(chooseNum-1), tempVar, ",");
 		isChecked = true;
 	}
 	return isChecked;
 }
 
+// Checks whether the string has a valid choose syntax or not.
 bool chooseCheck(string str) {
     if(str.length() < 12) {
         return false;
@@ -177,6 +205,7 @@ bool chooseCheck(string str) {
         string tempVar = str.substr(6);
         deleteEdgeSpaces(tempVar);
         int openParanthesisIndex = tempVar.find("(");
+        // Finds the open paranthesis index and checks whether there is any character other than space between choose text and the paranthesis
         if(openParanthesisIndex == -1) {
             return false;
         } else {
@@ -194,6 +223,7 @@ bool chooseCheck(string str) {
 		if(commaIndex == -1) {
             return false;
         }
+        // Takes the first expression of the choose function parameters by using the comma index.
         string first = tempVar.substr(openParanthesisIndex+1, commaIndex - openParanthesisIndex - 1);
         deleteEdgeSpaces(first);
         if(expressionCheck(first)) {
@@ -206,9 +236,9 @@ bool chooseCheck(string str) {
             if(commaIndex == -1) {
                 return false;
             }
+            // Takes the second expression of the choose function parameters by using the comma index.
             string second = tempVar.substr(0, commaIndex);
             deleteEdgeSpaces(second);
-
             if(expressionCheck(second)) {
                 tempVar = tempVar.substr(commaIndex+1);
                 commaIndex = tempVar.find(",");
@@ -219,6 +249,7 @@ bool chooseCheck(string str) {
                 if(commaIndex == -1) {
                     return false;
                 }
+                // Takes the third expression of the choose function parameters by using the comma index.
                 string third = tempVar.substr(0, commaIndex);
                 deleteEdgeSpaces(third);
                 if(expressionCheck(third)) {
@@ -242,6 +273,7 @@ bool chooseCheck(string str) {
                     if(closedIndex == -1) {
                         return false;
                     } else {
+                    	// Takes the forth expression of the choose function parameters by using the close paranthesis index.
                     	forth = forth.substr(0, closedIndex);
                     	deleteEdgeSpaces(forth);
                         if(expressionCheck(forth)) {
@@ -257,11 +289,13 @@ bool chooseCheck(string str) {
     return false;
 }
 
+// Checks whether the string is a factor: can be a choose function, variable or number.
 bool factorCheck(string str) {
 	if(chooseCheck(str)) {
 		return true;
 	} else {		
 		int openIndex = str.find("(");
+		// Takes the code inside of the paranthesis.
 		while(openIndex != -1) {
 			int closeIndex = str.find_last_of(")");
 			if(closeIndex == -1) {
@@ -282,6 +316,7 @@ bool factorCheck(string str) {
 	}
 }
 
+// Checks whether the string is a valid expression or not. An expression could be a facor or it may have arithmetic operations.
 bool expressionCheck(string str) {
 	if(factorCheck(str)) {
 		return true;
@@ -292,6 +327,7 @@ bool expressionCheck(string str) {
 	}
 }
 
+// Returns the precedence of an operator. * and / has the highest precedence.
 int precedence(char c) {
     int temp = 0;
     if(c == '+' || c == '-') {
@@ -302,6 +338,7 @@ int precedence(char c) {
     return temp;
 }
 
+// Checks whether the char is a valid operator or not.
 bool isOperator(char input) {
     if(input == '+' || input == '-' || input == '*' || input == '/') {
         return true;
@@ -309,10 +346,13 @@ bool isOperator(char input) {
     return false;
 }
 
+// Writes the appropriate llvm code for an airthmetic operation according to the operation type.
 void writeOperation(string num1, string num2, string type) {
 	string firstTemp = num1;
 	string secondTemp = num2;
+	// Takes the first and second num and checks they are a number or a variable.
 	if(!is_number(num1)) {
+		// If it is a variable, stores their value in a temp variable to use.
 		if(num1.find("%t") == string::npos) {
 			firstTemp = "%t" + to_string(tempNo++);
 			normalExpressions = normalExpressions + "\n\t" + firstTemp + " = load i32* %" + num1;
@@ -333,6 +373,7 @@ void writeOperation(string num1, string num2, string type) {
 	numbers.push(newTemp);
 }
 
+// Converts an expression from infix notation to the appropriate postfix notation.
 string convertToPostfix(string& str) {
 	stack<char> st;
 	st.push('E');
@@ -343,6 +384,7 @@ string convertToPostfix(string& str) {
     bool spaceFound = false;
     bool afterOperator = false;
     for(int i = 0; i < str.length() && !hasError; i++) {
+    	// Checks a character is a valid char, paranthsesis, operation or a space. Performs corresponding operation. 
        if(isValidChar(str[i])) {
        		if(spaceFound && !afterOperator) {
        			printError();
@@ -358,6 +400,7 @@ string convertToPostfix(string& str) {
 			spaceFound = false;
             afterOperator = true;
 		} else if(str[i] == ')') {
+			// Uses stack to store the paranthesis and the operators. 
 			while(st.top() != 'E' && st.top() != '(') {
                char c = st.top();
                st.pop();
@@ -399,6 +442,7 @@ string convertToPostfix(string& str) {
 
 	string temp = newString;
 	int spaceIndex = temp.find(" ");
+	// Controls the converted string and count the operator and operand numbers. If operand number is not operator number + 1, prints an error.
 	while(spaceIndex != -1) {
 		string var = temp.substr(0, spaceIndex);
 		if(isOperator(var)) {
@@ -419,6 +463,7 @@ string convertToPostfix(string& str) {
 	return newString;
 }
 
+// Outputs the corresponding llvm codes for the arithmetic operations by using the converted postfix.
 void calculator(string str) {
 	while(!numbers.empty()) {
 		numbers.pop();
@@ -433,6 +478,7 @@ void calculator(string str) {
 			numbers.pop();
 			string num2 = numbers.top();
 			numbers.pop();
+			// If it is an operator, takes the first and second operands and outputs the corresponding llvm code.
 			if(variable == "+") {
 				writeOperation(num1, num2, "add");
 			} else if(variable == "-") {
@@ -447,6 +493,7 @@ void calculator(string str) {
 				writeOperation(num1, num2, "udiv");
 			}
 		} else if (is_number(variable) || variableCheck(variable)) {
+			// If it is a variable or number, pushes it to the numbers stack and if it is a variable, allocates it.
 			writeToAllocateString(variable);
 			numbers.push(variable);
 		} else {
