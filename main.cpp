@@ -742,7 +742,6 @@ void chooseHandler(string line) {
 }
 
 //takes a string, line, which takes place inside a print statement in the given code, determines which types of statemens it contains and does necessary operations
-//
 void printHandler(string line) {
 	spaceDeleter(line);
 	if(variableCheck(line)) {
@@ -802,8 +801,8 @@ void chooseArithmetic(string& secondPart) {
 	}
 }
 
-//takes two strings, left hand side and right hand side of an assignment statement, checks if left hand side is valid and determines which type of statements 
-//right hand side statement contains
+// Takes two strings, left hand side and right hand side of an assignment statement, checks if left hand side is valid and determines which type of statements 
+// right hand side statement contains
 void assignmentHandler(string firstPart, string secondPart) {
 	spaceDeleter(firstPart);
 	spaceDeleter(secondPart);
@@ -832,7 +831,7 @@ void assignmentHandler(string firstPart, string secondPart) {
 	}
 }
 
-//takes a string, line, which is an assignment line, separates left hand side and right hand side, checks if there is an error in these parts
+// Takes a string, line, which is an assignment line, separates left hand side and right hand side, checks if there is an error in these parts
 void assignmentHelper(string line) {
 	int equalIndex = line.find("=");
 	string firstPart = line.substr(0, equalIndex);
