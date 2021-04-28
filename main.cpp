@@ -508,6 +508,8 @@ void calculator(string str) {
 	}
 }
 
+//takes a string, str, which is a condition statement of an if or a while statement and another string, type, which determines the special word of this condition statement
+//creates a condition statement for our language
 void conditionHandler(string str, string type) {
 	deleteEdgeSpaces(str);
 	string equality = "ne";
@@ -547,6 +549,7 @@ void conditionHandler(string str, string type) {
 	}
 }
 
+//takes a string that might be an if or a while statement and its type, then checks if given string is a valid if or while statement
 bool ifWhileCheck(string& str, string type) {
 	deleteEdgeSpaces(str);
 	int length = 4;
@@ -593,6 +596,7 @@ bool ifWhileCheck(string& str, string type) {
 	return true;
 }
 
+//takes an if or a while statement, find its condition string and create an if or a while statement in our language
 void ifWhileHandler(string line, string type){
 	int no = ifNo;
 	string cond = "ifcond";
@@ -623,6 +627,7 @@ void ifWhileHandler(string line, string type){
 	normalExpressions = normalExpressions+"\n\n" + body + to_string(no) + ":";
 }
 
+//takes a string and checks if it is a valid print statement 
 bool printCheck(string& str) {
 	deleteEdgeSpaces(str);
 	if(str.length() < 7) {
@@ -661,6 +666,7 @@ bool printCheck(string& str) {
     return false;
 }
 
+//creates if statements according to given rule of choose function, if expression contains another choose statement, then executes that choose first
 void chooseIfHelper(string var1, string var2, string type) {
 	int no = ifNo;
 	ifNo++;
@@ -696,6 +702,7 @@ void chooseIfHelper(string var1, string var2, string type) {
 	normalExpressions = normalExpressions + "\n\nifend" + to_string(no) + ":\n";
 }
 
+//finds four expressions takes place in the outmost choose statement separated by comma and sends them to chooseIfHelper method to create appropriate if statements
 void chooseHandler(string line) {
 	int commaIndex = line.find(",");
 	int firstParanthesis = line.find("(");
@@ -705,6 +712,7 @@ void chooseHandler(string line) {
     string first = line.substr(0, commaIndex);
 
     line = line.substr(commaIndex+1);
+    //finds next comma which is an element of the outmost choose statement
     if(!checkNestedChoose(line, commaIndex)) {
     	commaIndex = line.find(",");
     }
@@ -733,6 +741,7 @@ void chooseHandler(string line) {
     chooseIfHelper(first, forth, "chooseLess");
 }
 
+//takes a string, line, which takes place inside a print statement in the given code, determines which types of statemens it contains and does necessary operations
 void printHandler(string line) {
 	spaceDeleter(line);
 	if(variableCheck(line)) {
@@ -758,11 +767,13 @@ void printHandler(string line) {
 	}
 }
 
+//finds outmost opening and closing parantheses indexes, takes the string between them and does necessary operations repeatedly until there are no choose statements left
 void chooseArithmetic(string& secondPart) {
 	int chooseIndex = secondPart.find("choose");
 	int opened = 0;
 	int closedIndex = 0;
 	bool isEntered = false;
+	//finds beginning and ending of each choose statement and sends them to chooseHandler method to compute the results of these statements
 	while(chooseIndex != -1) {
 		for(int i=chooseIndex; i<secondPart.length(); i++) {
 			if(secondPart[i] == '(') {
@@ -790,6 +801,8 @@ void chooseArithmetic(string& secondPart) {
 	}
 }
 
+// Takes two strings, left hand side and right hand side of an assignment statement, checks if left hand side is valid and determines which type of statements 
+// right hand side statement contains
 void assignmentHandler(string firstPart, string secondPart) {
 	spaceDeleter(firstPart);
 	spaceDeleter(secondPart);
@@ -818,6 +831,7 @@ void assignmentHandler(string firstPart, string secondPart) {
 	}
 }
 
+// Takes a string, line, which is an assignment line, separates left hand side and right hand side, checks if there is an error in these parts
 void assignmentHelper(string line) {
 	int equalIndex = line.find("=");
 	string firstPart = line.substr(0, equalIndex);
@@ -840,6 +854,7 @@ int main(int argc, char* argv[]) {
 
 	string token;
 
+	//takes every line and stores them in a vector separately
 	while(getline(infile, token)) {
 		tokens.push_back(token);	
 	}
@@ -850,6 +865,7 @@ int main(int argc, char* argv[]) {
 		string line = tokens[k];
 		deleteEdgeSpaces(line);
 		int commentIndex = line.find("#");
+		//if there is a comment, ignores it
 		if(commentIndex != -1) {
 			line = line.substr(0, commentIndex);
 		}
@@ -860,7 +876,9 @@ int main(int argc, char* argv[]) {
 		}
 		if(equalIndex != -1) {
 			assignmentHelper(line);
+			//checks if it is an if statement
 		} else if(ifWhileCheck(line, "if")){
+			//checks if there is a nested ifs or if and while
 			if(inWhileBody || inIfBody) {
 				printError();
 				break;
@@ -868,7 +886,9 @@ int main(int argc, char* argv[]) {
 			inIfBody = true;
 			curlyBracket++;
 			ifWhileHandler(line, "if");
+			//checks if it is an if statement
 		} else if(ifWhileCheck(line, "while")){
+			//checks if there is a nested ifs or if and while
 			if(inWhileBody || inIfBody) {
 				printError();
 				break;
@@ -878,6 +898,7 @@ int main(int argc, char* argv[]) {
 			ifWhileHandler(line, "while");
 		} else if(printCheck(line)){
 			printHandler(line);
+			//checks if it is ending of a while or an if statement
 		} else if(line == "}") {
 			if(inWhileBody) {
 				inWhileBody = false;
