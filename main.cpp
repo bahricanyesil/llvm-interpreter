@@ -712,6 +712,7 @@ void chooseHandler(string line) {
     string first = line.substr(0, commaIndex);
 
     line = line.substr(commaIndex+1);
+    //finds next comma which is an element of the outmost choose statement
     if(!checkNestedChoose(line, commaIndex)) {
     	commaIndex = line.find(",");
     }
@@ -773,6 +774,7 @@ void chooseArithmetic(string& secondPart) {
 	int opened = 0;
 	int closedIndex = 0;
 	bool isEntered = false;
+	//finds beginning and ending of each choose statement and sends them to chooseHandler method to compute the results of these statements
 	while(chooseIndex != -1) {
 		for(int i=chooseIndex; i<secondPart.length(); i++) {
 			if(secondPart[i] == '(') {
@@ -853,6 +855,7 @@ int main(int argc, char* argv[]) {
 
 	string token;
 
+	//takes every line and stores them in a vector separately
 	while(getline(infile, token)) {
 		tokens.push_back(token);	
 	}
@@ -863,6 +866,7 @@ int main(int argc, char* argv[]) {
 		string line = tokens[k];
 		deleteEdgeSpaces(line);
 		int commentIndex = line.find("#");
+		//if there is a comment, ignores it
 		if(commentIndex != -1) {
 			line = line.substr(0, commentIndex);
 		}
@@ -873,7 +877,9 @@ int main(int argc, char* argv[]) {
 		}
 		if(equalIndex != -1) {
 			assignmentHelper(line);
+			//checks if it is an if statement
 		} else if(ifWhileCheck(line, "if")){
+			//checks if there is a nested ifs or if and while
 			if(inWhileBody || inIfBody) {
 				printError();
 				break;
@@ -881,7 +887,9 @@ int main(int argc, char* argv[]) {
 			inIfBody = true;
 			curlyBracket++;
 			ifWhileHandler(line, "if");
+			//checks if it is an if statement
 		} else if(ifWhileCheck(line, "while")){
+			//checks if there is a nested ifs or if and while
 			if(inWhileBody || inIfBody) {
 				printError();
 				break;
@@ -891,6 +899,7 @@ int main(int argc, char* argv[]) {
 			ifWhileHandler(line, "while");
 		} else if(printCheck(line)){
 			printHandler(line);
+			//checks if it is ending of a while or an if statement
 		} else if(line == "}") {
 			if(inWhileBody) {
 				inWhileBody = false;
