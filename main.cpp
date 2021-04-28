@@ -45,7 +45,6 @@ string lastChoose = "";
 void printError() {
 	if(!hasError) {
 		hasError = true;
-		cout << "Line " << lineNo << ": syntax error" << endl;
 		errorText = "Line " + to_string(lineNo) + ": syntax error";
 	}
 }
@@ -56,6 +55,10 @@ void spaceDeleter(string& str) {
 	str.erase(end_pos, str.end());
 	string::iterator end_pos2 = remove(str.begin(), str.end(), '	');
 	str.erase(end_pos2, str.end());
+	string::iterator end_pos3 = remove(str.begin(), str.end(), '\n');
+	str.erase(end_pos3, str.end());
+	string::iterator end_pos4 = remove(str.begin(), str.end(), '\r');
+	str.erase(end_pos4, str.end());
 }
 
 // Deletes the spaces at the both end of a stirng. Does not delete the middle ones.
@@ -77,6 +80,8 @@ void deleteEdgeSpaces(string& str) {
 	
 	str = str.substr(firstCharIndex, lastCharIndex - firstCharIndex+1);
 	str.erase(remove(str.begin(), str.end(), '\t'), str.end());
+	str.erase(remove(str.begin(), str.end(), '\n'), str.end());
+	str.erase(remove(str.begin(), str.end(), '\r'), str.end());
 }
 
 // Finds the nth substring of a string in another string if it contains.
@@ -850,7 +855,9 @@ int main(int argc, char* argv[]) {
 	infile.open(argv[1]);
 
 	ofstream outfile;
-	outfile.open(argv[2]);
+    string outputName = argv[1];
+    outputName = outputName.substr(0, outputName.length()-2) + "ll";
+    outfile.open(outputName);
 
 	string token;
 
@@ -934,7 +941,12 @@ int main(int argc, char* argv[]) {
 		outfile << "\n" + normalExpressions;
 		outfile << "\n\tret i32 0\n}";
 	} else {
-		outfile << errorText << endl;
+		outfile << "; ModuleID = 'mylang2ir'";
+		outfile << "\ndeclare i32 @printf(i8*, ...)";
+		outfile << "\n@print.str = internal constant [23 x i8] c\"Line %d: syntax error\\0A\\00\"";
+		outfile << "\n\ndefine i32 @main() {";
+		outfile << "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([23 x i8]* @print.str, i32 0, i32 0), i32 " + to_string(lineNo) + " )";
+		outfile << "\n\tret i32 0\n}";
 	}
 
 	infile.close();
