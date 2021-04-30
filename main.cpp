@@ -171,7 +171,7 @@ void writeToStoreString(string str1, string str2) {
 
 // Loads a value to a temp variable. The value can be a number or a variable.
 void loadToTemp(string var) {
-	normalExpressions = normalExpressions + "\n\t%t" + to_string(tempNo++) + " = load i32* %" + var;
+	normalExpressions = normalExpressions + "\n\t%tttnotgivemethistypeofnameme" + to_string(tempNo++) + " = load i32* %" + var;
 }
 
 // Checks the nested choose if there exists. Changes the comma index with a correct index if there are nested chooses.
@@ -358,22 +358,22 @@ void writeOperation(string num1, string num2, string type) {
 	// Takes the first and second num and checks they are a number or a variable.
 	if(!is_number(num1)) {
 		// If it is a variable, stores their value in a temp variable to use.
-		if(num1.find("%t") == string::npos) {
-			firstTemp = "%t" + to_string(tempNo++);
+		if(num1.find("%tttnotgivemethistypeofnameme") == string::npos) {
+			firstTemp = "%tttnotgivemethistypeofnameme" + to_string(tempNo++);
 			normalExpressions = normalExpressions + "\n\t" + firstTemp + " = load i32* %" + num1;
 		} else {
 			firstTemp = num1;
 		}
 	}
 	if(!is_number(num2)) {
-		if(num2.find("%t") == string::npos) {
-			secondTemp = "%t" + to_string(tempNo++);
+		if(num2.find("%tttnotgivemethistypeofnameme") == string::npos) {
+			secondTemp = "%tttnotgivemethistypeofnameme" + to_string(tempNo++);
 			normalExpressions = normalExpressions + "\n\t" + secondTemp + " = load i32* %" + num2;
 		} else {
 			secondTemp = num2;
 		}
 	}
-	string newTemp = "%t" + to_string(tempNo++);
+	string newTemp = "%tttnotgivemethistypeofnameme" + to_string(tempNo++);
 	normalExpressions = normalExpressions + "\n\t" + newTemp + " = " + type + " i32 " + secondTemp + ", " + firstTemp;
 	numbers.push(newTemp);
 }
@@ -527,19 +527,19 @@ void conditionHandler(string str, string type) {
 	}
 	if(variableCheck(str)) {
 		writeToAllocateString(str);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + str;
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + str;
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo) +" = icmp " + equality + " i32 %tttnotgivemethistypeofnameme"+to_string(tempNo-1)+", 0";
 	} else if(is_number(str)) {
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 "+ str +", 0";
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo) +" = icmp " + equality + " i32 "+ str +", 0";
 	} else if(chooseCheck(str)) {
 		if(findChoose(str)) {
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+			normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+			normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo) +" = icmp " + equality + " i32 %tttnotgivemethistypeofnameme" + to_string(tempNo-1) +", 0";
 		} else {
 			chooseStore.push_back(str);
 			chooseHandler(str);
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
-			normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t" + to_string(tempNo-1) +", 0";
+			normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+			normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo) +" = icmp " + equality + " i32 %tttnotgivemethistypeofnameme" + to_string(tempNo-1) +", 0";
 		}
 	} else if(hasArithmeticOperations(str)) {
 		chooseArithmetic(str);
@@ -548,7 +548,7 @@ void conditionHandler(string str, string type) {
 			return;
 		}
 		calculator(str);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo) +" = icmp " + equality + " i32 %t"+to_string(tempNo-1)+", 0";
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo) +" = icmp " + equality + " i32 %tttnotgivemethistypeofnameme"+to_string(tempNo-1)+", 0";
 	} else {
 		printError();
 	}
@@ -628,7 +628,7 @@ void ifWhileHandler(string line, string type){
 		chooseIndexes.pop();
 		inIfNo = no;
 	}
-	normalExpressions = normalExpressions+"\n\tbr i1 %t" + to_string(tempNo++) +", label %" + body + to_string(no) + ", label %" + end + to_string(no);
+	normalExpressions = normalExpressions+"\n\tbr i1 %tttnotgivemethistypeofnameme" + to_string(tempNo++) +", label %" + body + to_string(no) + ", label %" + end + to_string(no);
 	normalExpressions = normalExpressions+"\n\n" + body + to_string(no) + ":";
 }
 
@@ -679,17 +679,17 @@ void chooseIfHelper(string var1, string var2, string type) {
 	normalExpressions = normalExpressions+"\n\tbr label %ifcond" + to_string(no);
 	normalExpressions = normalExpressions+"\n\nifcond" + to_string(no) + ":";
 	conditionHandler(var1, type);
-	normalExpressions = normalExpressions+"\n\tbr i1 %t" + to_string(tempNo++) +", label %ifbody" + to_string(no) + ", label %ifend" + to_string(no);
+	normalExpressions = normalExpressions+"\n\tbr i1 %tttnotgivemethistypeofnameme" + to_string(tempNo++) +", label %ifbody" + to_string(no) + ", label %ifend" + to_string(no);
 	normalExpressions = normalExpressions+"\n\nifbody" + to_string(no) + ":";
 	if(variableCheck(var2)) {
 		writeToAllocateString(var2);
 		loadToTemp(var2);
-		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%t"+to_string(tempNo-1));
+		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%tttnotgivemethistypeofnameme"+to_string(tempNo-1));
 	} else if (is_number(var2)) {
 		writeToStoreString("mylocalsupervar" + to_string(chooseNo), var2);
 	}  else if(chooseCheck(var2)) {
 		chooseHandler(var2);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
 	}  else if(hasArithmeticOperations(var2)) {
 		chooseArithmetic(var2);
 		var2 = convertToPostfix(var2);
@@ -697,7 +697,7 @@ void chooseIfHelper(string var1, string var2, string type) {
 			return;
 		}
 		calculator(var2);
-		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%t" + to_string(tempNo-1));
+		writeToStoreString("mylocalsupervar" + to_string(chooseNo), "%tttnotgivemethistypeofnameme" + to_string(tempNo-1));
 	} else {
 		printError();
 		return;
@@ -752,13 +752,13 @@ void printHandler(string line) {
 	if(variableCheck(line)) {
 		writeToAllocateString(line);
 		loadToTemp(line);
-		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %tttnotgivemethistypeofnameme" + to_string(tempNo-1) + " )";
 	} else if(is_number(line)) {
 		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " + line + " )";
 	} else if(chooseCheck(line)) {
 		chooseHandler(line);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
-		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %tttnotgivemethistypeofnameme" + to_string(tempNo-1) + " )";
 	} else if(hasArithmeticOperations(line)) {
 		chooseArithmetic(line);
 		line = convertToPostfix(line);
@@ -766,7 +766,7 @@ void printHandler(string line) {
 			return;
 		}
 		calculator(line);
-		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %t" + to_string(tempNo-1) + " )";
+		normalExpressions = normalExpressions + "\n\tcall i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 %tttnotgivemethistypeofnameme" + to_string(tempNo-1) + " )";
 	} else {
 		printError();
 	}
@@ -816,13 +816,13 @@ void assignmentHandler(string firstPart, string secondPart) {
 	if(variableCheck(secondPart)) {
 		writeToAllocateString(secondPart);
 		loadToTemp(secondPart);
-		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
+		writeToStoreString(firstPart, "%tttnotgivemethistypeofnameme" + to_string(tempNo-1));
 	} else if(is_number(secondPart)) {
 		writeToStoreString(firstPart, secondPart);
 	} else if(chooseCheck(secondPart)) {
 		chooseHandler(secondPart);
-		normalExpressions=normalExpressions+"\n\t%t"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
-		writeToStoreString(firstPart, "%t"+to_string(tempNo-1));
+		normalExpressions=normalExpressions+"\n\t%tttnotgivemethistypeofnameme"+to_string(tempNo++) +" = load i32* %" + "mylocalsupervar" +to_string(chooseNo);
+		writeToStoreString(firstPart, "%tttnotgivemethistypeofnameme"+to_string(tempNo-1));
 	} else if(hasArithmeticOperations(secondPart)) {
 		chooseArithmetic(secondPart);
 		secondPart = convertToPostfix(secondPart);
@@ -830,7 +830,7 @@ void assignmentHandler(string firstPart, string secondPart) {
 			return;
 		}
 		calculator(secondPart);
-		writeToStoreString(firstPart, "%t" + to_string(tempNo-1));
+		writeToStoreString(firstPart, "%tttnotgivemethistypeofnameme" + to_string(tempNo-1));
 	} else {
 		printError();
 	}
@@ -893,9 +893,9 @@ int main(int argc, char* argv[]) {
 			inIfBody = true;
 			curlyBracket++;
 			ifWhileHandler(line, "if");
-			//checks if it is an if statement
+			//checks if it is an while statement
 		} else if(ifWhileCheck(line, "while")){
-			//checks if there is a nested ifs or if and while
+			//checks if there is a nested whiles or if and while
 			if(inWhileBody || inIfBody) {
 				printError();
 				break;
