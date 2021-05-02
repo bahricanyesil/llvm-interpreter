@@ -863,7 +863,7 @@ int main(int argc, char* argv[]) {
 
 	//takes every line and stores them in a vector separately
 	while(getline(infile, token)) {
-		tokens.push_back(token);	
+		tokens.push_back(token);
 	}
 	lastChoose = "";
 

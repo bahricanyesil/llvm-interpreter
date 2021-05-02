@@ -1,5 +1,3 @@
-all:		mylang2ir
-
 mylang2ir:	main.o
 			g++ -std=c++14 main.o -o mylang2ir
 
